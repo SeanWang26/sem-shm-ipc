@@ -1,0 +1,57 @@
+
+
+
+
+
+
+
+int open_or_create_vsem(const char *filename);
+int open_vsem(const char *filename);
+int close_vsem(int semid);
+int remove_vsem(const char * filename);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
