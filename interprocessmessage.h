@@ -14,7 +14,7 @@ struct ipcmsg_handle
 struct shm_mem_head
 {
 	unsigned int ref : 0;
-	unsigned char ctrl: 0;// 
+	unsigned char ctrl: 0;//
 }
 
 ipcmsg_handle* create_interprocess_msg(struct ipcmsg_handle* handle)
