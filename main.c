@@ -77,14 +77,14 @@ int main(int argc, char** argv)
 {
 	printf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
 
-	semid2  = open_or_create_vsem("xxxxxxxxdddd");
-	semid3	= open_or_create_vsem("xxxxxxxxddddssss");
+	semid2  = open_or_create_vsem("xxxxxxxxdddd0");
+	semid3	= open_or_create_vsem("xxxxxxxxddddssss0");
 
-	post_task();
+	//post_task();
 
 	while(1)
 	{
-		//post_vsem(semid2);
+		post_vsem(semid2);
 		
 		wait_vsem(semid3);
 		printf("semid3 get ack\n");

@@ -1,17 +1,28 @@
 #include "vsem.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <sys/ipc.h>
 #include <sys/sem.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <sys/ipc.h>
 #include <limits.h>
-#include <stdio.h>
+#include <sys/types.h>
+#include <sys/shm.h>
 
 #define SEM_DEFAULT_DIR "/dev/shm/"
+
+union semun
+{
+ int val;
+ struct semid_ds *buf;
+ unsigned short int *array;
+ struct seminfo *__buf;
+};
+
 
 static key_t create_semkey(const char *filename, int create)
 {
@@ -70,7 +81,9 @@ int open_or_create_vsem(const char *filename)
 		if ((semid = semget(semkey, 1, IPC_CREAT | IPC_EXCL | S_IRUSR |
 			S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)) != -1)
 		{
-			
+			union semun arg;
+			arg.val=0;
+			semctl(semid, 0, SETVAL, arg);
 		}
 		else if (errno == EEXIST)
 		{
@@ -79,6 +92,10 @@ int open_or_create_vsem(const char *filename)
 				perror("IPC error 1: semget");
 				return -1;
 			}
+			
+			//union semun arg;
+			//arg.val=0;
+			//semctl(semid, 0, SETVAL, arg);
 		}
 		else
 		{
@@ -87,6 +104,8 @@ int open_or_create_vsem(const char *filename)
 		}
 	}
 
+	printf("[open_or_create_vsem]getvalue_vsem %d\n", getvalue_vsem(semid));
+	
 	return semid;
 }
 int open_vsem(const char *filename)
@@ -106,10 +125,11 @@ int post_vsem(int semid)
 	struct sembuf sb; 
 	sb.sem_num=0;
 	sb.sem_op=1;
-	sb.sem_flg=SEM_UNDO ;
+	sb.sem_flg=0;//SEM_UNDO
 	if(semop(semid,&sb,1)==-1)
-	{
-		perror("post_vsem error"); 
+	{	
+		printf("[post_vsem]getvalue_vsem %d\n", getvalue_vsem(semid));
+		perror("[post_vsem]error"); 
 		return -1;
 	}
 
@@ -120,10 +140,11 @@ int wait_vsem(int semid)
 	struct sembuf sb; 
 	sb.sem_num=0;
 	sb.sem_op=-1;
-	sb.sem_flg=SEM_UNDO ;
+	sb.sem_flg=0;//SEM_UNDO
 	if(semop(semid,&sb,1)==-1)
-	{
-		perror("wait_vsem error"); 
+	{	
+		printf("[wait_vsem]getvalue_vsem %d\n", getvalue_vsem(semid));
+		perror("[wait_vsem] error"); 
 		return -1;
 	}
 
@@ -143,6 +164,11 @@ int waittimeout_vsem(int semid, struct timespec *timeout)
 	}
 
 	return 0;
+}
+
+int getvalue_vsem(int semid)
+{
+	return semctl(semid, 0, GETVAL, 0);
 }
 
 int close_vsem(int semid)
