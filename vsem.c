@@ -23,6 +23,7 @@ union semun
  struct seminfo *__buf;
 };
 
+#define IF_NOT_EXIST_CREATE
 
 static key_t create_semkey(const char *filename, int create)
 {
@@ -108,6 +109,21 @@ int open_or_create_vsem(const char *filename)
 	
 	return semid;
 }
+
+
+//如遇同名的先删除再创建
+int create_vsem(const char *filename)
+{
+	int semid = -1;
+	key_t semkey = create_semkey(filename, 1);
+	if(semkey==-1)
+	{	
+		return -1;
+	}
+
+
+}
+
 int open_vsem(const char *filename)
 {
 	//int semid = -1;

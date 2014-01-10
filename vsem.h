@@ -2,6 +2,7 @@
 #define VSEM_H
 #include <time.h>
 
+int create_vsem(const char *filename);
 int open_or_create_vsem(const char *filename);
 int open_vsem(const char *filename);
 int post_vsem(int semid);
