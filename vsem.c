@@ -14,16 +14,21 @@
 #include <sys/shm.h>
 
 #define SEM_DEFAULT_DIR "/dev/shm/"
+//#define SEM_DEFAULT_DIR "/dev/shm/"
 
 union semun
 {
- int val;
- struct semid_ds *buf;
- unsigned short int *array;
- struct seminfo *__buf;
+	int val;
+	struct semid_ds *buf;
+	unsigned short int *array;
+	struct seminfo *__buf;
 };
 
-#define IF_NOT_EXIST_CREATE
+//i need a file lock to lock the create?
+
+#define IF_NOT_EXIST_CREATE 1
+#define IF_NOT_EXIST_NOT_CREATE 2
+#define IF_EXIST_DELETE_RECREATE 3
 
 static key_t create_semkey(const char *filename, int create)
 {
@@ -31,9 +36,11 @@ static key_t create_semkey(const char *filename, int create)
 	char SemPath[PATH_MAX] = SEM_DEFAULT_DIR;
 
 	strcat(SemPath, filename);
-	if(access(SemPath, F_OK) && create)//
+
+	if(access(SemPath, F_OK))//
 	{
-		if(create)
+		//not exist
+		if(create==IF_NOT_EXIST_CREATE)
 		{
 			perror("file not exist then create it");
 			//create file
@@ -50,10 +57,47 @@ static key_t create_semkey(const char *filename, int create)
 			else 
 				close(fd);
 		}
-		else
+		else if(create==IF_NOT_EXIST_NOT_CREATE)
 		{
-			perror("file not exist and not create it");
+			perror("file not exist, not create it");
 			return -1;
+		}
+	}
+	else
+	{
+		//exist
+		if(create==IF_EXIST_DELETE_RECREATE)
+		{	
+			perror("file exist, re create it");
+			int cnt = 0;
+			int res = -1;
+			while(res && cnt < 5)
+			{
+				res = unlink(SemPath);
+
+				//if(res && EBUSY==errno) 
+  				//{
+				//	sleep(0);
+				//	++cnt;
+				//	continue;
+				//}
+			}
+
+			if(res) return -1;
+
+			int fd = open(SemPath, O_CREAT|IPC_EXCL);
+			if(fd < 0)
+			{	
+				if(EEXIST!=errno)
+				{
+					perror("file create error"); 
+					return -1;
+				}
+				perror("create but file exist"); 
+			}
+			else 
+				close(fd);
+			
 		}
 	}
 
@@ -115,13 +159,13 @@ int open_or_create_vsem(const char *filename)
 int create_vsem(const char *filename)
 {
 	int semid = -1;
-	key_t semkey = create_semkey(filename, 1);
+	key_t semkey = create_semkey(filename, IF_EXIST_DELETE_RECREATE);
 	if(semkey==-1)
 	{	
 		return -1;
 	}
 
-
+	
 }
 
 int open_vsem(const char *filename)

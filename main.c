@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "xmmanager.h"
+
 #include "shm.h"
 #include "sem.h"
 #include "vsem.h"
@@ -77,10 +79,60 @@ int main(int argc, char** argv)
 {
 	printf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
 
+	device *dev = (device *)xm_alloc_device();
+	if(dev==NULL)
+	{
+		printf("xm_alloc_device failed\n");
+	}
+	
+	dev->ops->init(dev);
+	{
+		stLogin_Req req = {"192.168.1.238", 34567, "user", "user"};
+		stLogin_Rsp rsp;
+		if(dev->ops->login(dev, &req, &rsp))
+		{
+			printf("login failed\n");
+		}
+	}
+
+
+	{
+		struct stOpenVideoStream_Req req = {0,0,0,0};
+		struct stOpenVideoStream_Rsp rsp;
+
+		if(dev->ops->open_video_stream(dev, &req, &rsp))
+		{
+			printf("logout failed\n");
+		}
+
+	}
+	
+	while(1)
+		sleep(1111);
+
+	{
+		stLogout_Req req;
+		stLogout_Rsp rsp;
+		if(dev->ops->logout(dev, &req, &rsp))
+		{
+			printf("logout failed\n");
+		}
+	}
+
+
+
+
+
+
+	return 0;
+
 	semid2  = open_or_create_vsem("xxxxxxxxdddd0");
 	semid3	= open_or_create_vsem("xxxxxxxxddddssss0");
 
 	//post_task();
+
+
+
 
 	while(1)
 	{
