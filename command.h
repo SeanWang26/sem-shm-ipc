@@ -51,41 +51,47 @@ struct stLogout_Rsp
 	long long				DeviceHandle;
 };
 
-//获取码流信息
-struct stGetEncode_Req
+//获取配置信息
+struct stGetConfig_Req
 {
 	long long				DeviceHandle;
+	unsigned int			Type;
 	unsigned int			Channel;
 };
-struct stGetEncode_Rsp
+struct stGetConfig_Rsp
 {
-	unsigned int			CodecNumber;
+	unsigned int			Type;
+	unsigned int			Channel;
+	unsigned int			Size;
+	char*					Config;
 };
 
 //打开视频流
 struct stOpenVideoStream_Req
 {
 	long long				DeviceHandle;
-	unsigned int			Channel;
-	unsigned int			Codec;
-	void*					Callback;
+	int						Channel;
+	int                     Codec;
+	void*                   Callback;
 };
 struct stOpenVideoStream_Rsp
 {
-	unsigned int			StreamId;
+	long long		DeviceHandle;
+	long			StreamHandle;
 };
 
 //关闭视频流
 struct stCloseVideoStream_Req
 {
 	long long				DeviceHandle;
+	long					StreamHandle;
 	unsigned int			Channel;
 	unsigned int			Codec;
 };
 struct stCloseVideoStream_Rsp
 {
 	long long				DeviceHandle;
-	unsigned int			StreamId;
+	long					StreamHandle;
 };
 
 //打开音频流
@@ -239,8 +245,8 @@ union unCommander
 	AddCommander(Logout_Req);
 	AddCommander(Logout_Rsp);
 	//获取编码信息
-	AddCommander(GetEncode_Req);
-	AddCommander(GetEncode_Rsp);
+	AddCommander(GetConfig_Req);
+	AddCommander(GetConfig_Rsp);
 	//打开关闭视频流
 	AddCommander(OpenVideoStream_Req);
 	AddCommander(OpenVideoStream_Rsp);

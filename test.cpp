@@ -131,11 +131,11 @@ int  main(void)
 	}
 #else
 
-	printf("Call H264_DVR_Login**wrong£°");
+	printf("Call H264_DVR_Login**£°");
 	H264_DVR_DEVICEINFO OutDev;	
 	memset(&OutDev,0,sizeof(OutDev));
 	int nError = 0;			
-	g_LoginID = H264_DVR_Login((char*)"192.168.1.238", 34567,(char*)"user",(char*)"user",(LPH264_DVR_DEVICEINFO)(&OutDev),&nError);		
+	g_LoginID = H264_DVR_Login((char*)"192.168.1.72", 34567,(char*)"user",(char*)"user",(LPH264_DVR_DEVICEINFO)(&OutDev),&nError);		
 #endif
 
  	if(g_LoginID>0)
@@ -165,7 +165,7 @@ int  main(void)
 #endif
 		// µ ±º‡ ”
 
-#define RealPlay
+//#define RealPlay
 #ifdef  RealPlay
 		H264_DVR_CLIENTINFO playstru;
 
@@ -182,6 +182,13 @@ int  main(void)
 			g_pFile = fopen("TestRealPlay.h264", "wb+");
 			H264_DVR_SetRealDataCallBack_V2(m_iPlayhandle, RealDataCallBack_V2, 0);
 			printf("start RealPlay ok!");
+
+			H264_DVR_PTZControl(g_LoginID,0, PAN_LEFT, false, 4);
+
+			sleep(1);
+			
+			H264_DVR_PTZControl(g_LoginID,0, 0, true, 4);
+
 			sleep(10);
 			if(H264_DVR_StopRealPlay(m_iPlayhandle))
 			{
@@ -195,6 +202,7 @@ int  main(void)
 		}
 #endif
 		//Õ¯¬Á≈‰÷√
+#define Config
 #ifdef Config
  		DWORD dwRetLen = 0;
  		int nWaitTime = 10000;
@@ -223,6 +231,20 @@ int  main(void)
  			int len=sizeof (SDK_CONFIG_NET_COMMON);
  			printf("GetConfig Wrong:%d,RetLen:%ld  !=  %d\n",bSuccess,dwRetLen,len);
  		}
+
+		SDK_EncodeConfigAll_SIMPLIIFY CfgEncode = {0};
+		bSuccess = H264_DVR_GetDevConfig(g_LoginID,E_SDK_CONFIG_SYSENCODE_SIMPLIIFY, -1,
+		(char *)&CfgEncode,sizeof(SDK_EncodeConfigAll_SIMPLIIFY),&dwRetLen,nWaitTime);
+ 		if ( bSuccess && dwRetLen == sizeof(SDK_EncodeConfigAll_SIMPLIIFY))
+ 		{
+			printf("############H264_DVR_GetDevConfig: #############\n");
+		}
+		else
+		{
+			printf("############H264_DVR_GetDevConfigerror: ############# bSuccess %d\n", bSuccess);
+		}
+
+		
 	//∆’Õ®≈‰÷√
  		dwRetLen = 0;
  		nWaitTime = 10000;

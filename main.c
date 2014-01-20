@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "xmmanager.h"
+#include <string.h>
 
 #include "shm.h"
 #include "sem.h"
@@ -74,12 +75,71 @@ int post_task()
 	return	create_detached_thread(&tid, task_work2, (void*)"printf");
 }
 
+int _real_staream_callback(stream* stm, const void *pFrame, unsigned int user)
+{
+
+	return 0;
+}
+
+int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* Password)
+{
+	device *dev = (device *)xm_alloc_device();
+	if(dev==NULL)
+	{
+		printf("xm_alloc_device failed\n");
+	}
+	
+	dev->ops->init(dev);
+	{
+		stLogin_Req req;
+		strcpy(req.Ip, Ip);
+		req.Port = Port;
+		strcpy(req.User, Name);
+		strcpy(req.Password, Password);
+		
+		stLogin_Rsp rsp;
+		if(dev->ops->login(dev, &req, &rsp))
+		{
+			printf("login failed\n");
+		}
+	}
+
+	{
+		struct stGetConfig_Req req = {0,GET_ENCODE_CONFIG,0};
+		struct stGetConfig_Rsp rsp;
+		if(dev->ops->get_config(dev, &req, &rsp))
+		{
+			printf("get_config failed\n");
+		}
+	}
+
+	{
+		/*struct stOpenVideoStream_Req req = {0,0,0,(void*)_real_staream_callback};
+		struct stOpenVideoStream_Rsp rsp;
+
+		if(dev->ops->open_video_stream(dev, &req, &rsp))
+		{
+			printf("logout failed\n");
+		}*/
+	}
+	
+	{
+		struct stOpenAlarmStream_Req req = {0};
+		struct stOpenAlarmStream_Rsp rsp;
+		if(dev->ops->open_alarm_stream(dev, &req, &rsp))
+		{
+			printf("logout failed\n");
+		}
+	}
+
+}
 
 int main(int argc, char** argv)
 {
 	printf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
 
-	device *dev = (device *)xm_alloc_device();
+
+	/*device *dev = (device *)xm_alloc_device();
 	if(dev==NULL)
 	{
 		printf("xm_alloc_device failed\n");
@@ -105,15 +165,30 @@ int main(int argc, char** argv)
 			printf("logout failed\n");
 		}
 
-	}
-	
+	}*/
+
+	getxmvefeo("192.168.1.238", 34567, "user", "user");
+	/*getxmvefeo("192.168.1.78", 34567, "admin", "");
+	getxmvefeo("192.168.1.76", 34567, "user", "user");
+	getxmvefeo("192.168.1.10", 34567, "admin", "");
+	getxmvefeo("192.168.1.79", 34567, "admin", "");
+	getxmvefeo("192.168.1.238", 34567, "user", "user");
+
+	getxmvefeo("192.168.1.238", 34567, "user", "user");
+	getxmvefeo("192.168.1.78", 34567, "admin", "");
+	getxmvefeo("192.168.1.76", 34567, "user", "user");
+	getxmvefeo("192.168.1.10", 34567, "admin", "");
+	getxmvefeo("192.168.1.79", 34567, "admin", "");
+	getxmvefeo("192.168.1.238", 34567, "user", "user");
+*/
+
 	while(1)
 		sleep(1111);
 
 	{
 		stLogout_Req req;
 		stLogout_Rsp rsp;
-		if(dev->ops->logout(dev, &req, &rsp))
+		//if(dev->ops->logout(dev, &req, &rsp))
 		{
 			printf("logout failed\n");
 		}

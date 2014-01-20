@@ -3,3 +3,13 @@
 this is a ipc use share memory and sem
 
 
+设置断线通知
+
+设置各类回调的接口
+
+关闭视频流包括关闭音频流
+XM的不开视屏也能开音频
+xm云台，需通道打开
+
+
+子链接断线的概念
