@@ -69,10 +69,11 @@ struct stGetConfig_Rsp
 //打开视频流
 struct stOpenVideoStream_Req
 {
-	long long				DeviceHandle;
+	long long               DeviceHandle;
 	int						Channel;
 	int                     Codec;
 	void*                   Callback;
+	void*                   UserData;
 };
 struct stOpenVideoStream_Rsp
 {
@@ -191,6 +192,11 @@ struct stSetTime_Rsp
 };
 
 enum { PTZ_MOVE=0, PTZ_STOP, PTZ_TOUR_START, PTZ_TOUR_STOP, SET_DEFAULT_POS, GOTO_PRESET, SET_PRESET, CLEAR_PRESET, SET_TOUR_LIST, AUTO_FOUS};
+
+//云台方向
+typedef enum {PTZ_LEFT,PTZ_LEFT_UP,PTZ_UP,PTZ_UP_RIGHT,PTZ_RIGHT,PTZ_DOWN_RIGHT,PTZ_DOWN,PTZ_DOWN_LEFT,PTZ_ABSOLUTE_POS,PTZ_STOP_MOVE,\
+PTZ_RESET, PTZ_PUSH_FAR, PTZ_PULL_NEAR,PTZ_IRIS_SUB,PTZ_IRIS_ADD,PTZ_FOCUS_FAR,PTZ_FOCUS_NEAR}PTZ_DIRECTION;
+
 //PTZ控制
 struct stPTZControl_Req
 {

@@ -20,6 +20,7 @@
 #define GET_CONFIG_FAILED               -15  //获取配置失败
 #define OPEN_ALARM_STREAM_FAILED        -16  //开报警失败
 #define CLOSE_ALARM_STREAM_FAILED       -17  //关报警失败
+#define UNKONWN_PTZ_COMMAND             -18  //未知的ptz命令
 
 #define	INVALID_CHANNEL_NO				-100 //不正确的通道号
 #define	INVALID_STREAM_NO				-101 //不正确的流号

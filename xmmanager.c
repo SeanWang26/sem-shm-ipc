@@ -8,6 +8,8 @@
 
 static int g_initaled = 0;
 
+static int xm_device_init(struct xmdevice *dev);
+
 static int xm_init(struct device *dev);
 static int xm_uninit(struct device *dev);
 static int xm_login(struct device *dev, struct stLogin_Req *req, struct stLogin_Rsp *rsp);
@@ -20,6 +22,8 @@ static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 static int xm_set_config(struct device *dev);
 static int xm_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req *req, struct stOpenAlarmStream_Rsp *rsp);
 static int xm_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Req *rsp);
+static int xm_ptz_control(struct device *, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp);
+
 
 static struct device_ops xm_ops[] = 
 {
@@ -36,11 +40,31 @@ static struct device_ops xm_ops[] =
 	xm_get_config,
 	xm_set_config,
 	xm_open_alarm_stream,
-	xm_close_alarm_stream
+	xm_close_alarm_stream,
+	xm_ptz_control
 };
+
+void disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
+{
+	FIND_DEVICE_BEGIN(struct xmdevice,DEVICE_XM)
+	{
+		if(dev->loginid == lLoginID)
+		{
+			xm_device_init(dev);
+			printf("[%s]%p, %s, %lu\n", __FUNCTION__, (void*)dwUser, pchDVRIP, nDVRPort);
+			break;
+		}
+	}
+	FIND_DEVICE_END
+}
 
 static int real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFrame, unsigned int dwUser)
 {
+	//lock
+	struct xmstream* stream = (struct xmstream*)dwUser;
+	//stream->stm.callback(stream->stm.userdata);
+		
+
 	/*int		nPacketType;				// 包类型,见MEDIA_PACK_TYPE
 	char*	pPacketBuffer;				// 缓存区地址
 	unsigned int	dwPacketSize;				// 包的大小
@@ -61,16 +85,28 @@ static int real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFrame,
 	unsigned int       Reserved[6];            //保留
 */
 
-	printf("[]xm get frame user %u, type %d, size %u\n", dwUser, pFrame->nPacketType, pFrame->dwPacketSize);
+
+	printf("xm get frame user %p, type %d, size %u\n", stream, pFrame->nPacketType, pFrame->dwPacketSize);
 	
 	// it must return TRUE if decode successfully,or the SDK will consider the decode is failed
 	return 1;
 }
 void talk_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, char byAudioFlag, long dwUser)
 {
-	//BOOL bResult = TRUE;
+	//lock
+	FIND_DEVICE_BEGIN(struct xmdevice,DEVICE_XM)
+	{
+		if(dev->voicehandle == lTalkHandle)
+		{
+			//((xmdevice*)device)->voice_callback(((xmdevice*)device)->voice_callbackuserdata);
+			printf("[%s]device %p, lTalkHandle %ld\n", __FUNCTION__, (void*)dev, lTalkHandle);
+			break;
+		}
 
-	
+	}
+	FIND_DEVICE_END
+
+	//BOOL bResult = TRUE;
 }
 
 static inline int handle_alarm(xmdevice *device, char *pBuf, unsigned long dwBufLen)
@@ -119,7 +155,7 @@ bool mess_callback(long lLoginID, char *pBuf, unsigned long dwBufLen, long dwUse
 		if(!device->deleted && device->ops->type == DEVICE_XM )
 		{	
 			if(((xmdevice*)device)->loginid == lLoginID)
-			{
+			{				
 				handle_alarm((xmdevice*)device, pBuf, dwBufLen);
 				break;
 			}
@@ -255,7 +291,7 @@ struct xmdevice *xm_alloc_device()
 	xmdevice *device = (xmdevice *)alloc_device(xm_ops);
 	if(device)
 	{
-		device->loginid = 0;
+		device->loginid = XM_INVALIDE_LOGINID;
 		memset(&device->info, 0 ,sizeof(device->info));
 		return device;
 	}
@@ -266,7 +302,7 @@ struct xmdevice *xm_alloc_device()
 static int xm_init(struct device *dev)
 {
 	printf("[%s]\n", __FUNCTION__);
-	if(!g_initaled && H264_DVR_Init(NULL,0))
+	if(!g_initaled && H264_DVR_Init(disconnect_callback, (unsigned long)&devicelist))
 	{
 		list_init(&devicelist);
 		
@@ -289,6 +325,32 @@ static int xm_uninit(struct device *dev)
 	return SUCCESS;
 }
 
+static int xm_device_init(struct xmdevice *dev)
+{
+	dev->loginid = XM_INVALIDE_LOGINID;
+
+	struct channel* channel;
+	LIST_FOR_EACH_ENTRY(channel, &dev->dev.channels, struct channel, entry)
+	{
+		assert(channel->obj.type == OBJECT_TYPE_CHANNEL);
+
+		struct stream* stream;
+		LIST_FOR_EACH_ENTRY(stream, &channel->streams, struct stream, entry)
+		{
+			assert(stream->obj.type == OBJECT_TYPE_STREAM);
+			stream->pulling = 0;
+			stream->callback = NULL;
+			stream->userdata = NULL;
+			H264_DVR_SetRealDataCallBack_V2(((struct xmstream*)stream)->playhandle, NULL, 0);
+			H264_DVR_StopVoiceCom(dev->voicehandle);///?????? need
+			dev->voicehandle = 0;
+			memset(&dev->info, 0, sizeof(dev->info));
+		}
+	}
+
+	return 0;
+}
+
 static int xm_login(struct device *dev, struct stLogin_Req *req, struct stLogin_Rsp *rsp)
 {
 	printf("[%s]\n", __FUNCTION__);
@@ -296,16 +358,20 @@ static int xm_login(struct device *dev, struct stLogin_Req *req, struct stLogin_
 
 	if(get_device(dev)==NULL) add_device(dev);
 
-	xmdevice *xmdev = (xmdevice *)dev;
+	struct xmdevice *xmdev = (xmdevice *)dev;
 	if(xmdev==NULL)
 	{
 		printf("[%s]xmdev null\n", __FUNCTION__);
 		return DEVICE_NULL_FAILED;
 	}
 	
-	memset(&xmdev->info,0,sizeof(xmdev->info));
+	strcpy(dev->ip, req->Ip);
+	dev->port = req->Port;
+	strcpy(dev->user, req->User);
+	strcpy(dev->password, req->Password);
+	
 	int err = 0;			
-	xmdev->loginid = H264_DVR_Login((char*)req->Ip, req->Port,(char*)req->User,(char*)req->Password,(LPH264_DVR_DEVICEINFO)(&xmdev->info),&err);		
+	xmdev->loginid = H264_DVR_Login((char*)dev->ip, dev->port,(char*)dev->user, (char*)dev->password,(LPH264_DVR_DEVICEINFO)(&xmdev->info),&err);		
 	if(xmdev->loginid > 0)
 	{
 		printf("[%s]xmdev login success, %s, %d, %s, %s\n"
@@ -316,10 +382,10 @@ static int xm_login(struct device *dev, struct stLogin_Req *req, struct stLogin_
 	{
 		printf("[%s]xmdev login failed, %s, %d, %s, %s\n"
 			, __FUNCTION__, req->Ip, req->Port, req->User, req->Password);
-		return -2;
+		return LOGIN_FAILED;
 	}
 
-	return -2;
+	return LOGIN_FAILED;
 }
 static int xm_logout(struct device *dev, struct stLogout_Req *req, struct stLogout_Rsp *rsp)
 {
@@ -415,8 +481,6 @@ static int xm_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 				stm = NULL;
 				//stm = old;
 			}
-
-			
 		}
 		else
 		{
@@ -439,14 +503,17 @@ static int xm_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	else
 	{
 		printf("[%s]start real stream ok\n", __FUNCTION__);
-		stm->playhandle = handle;
-		stm->stm.pulling = 1;
-		rsp->StreamHandle = (long)stm;
-		if(H264_DVR_SetRealDataCallBack_V2(handle, real_data_callback_v2, (long)xmdev)==0)
+		if(H264_DVR_SetRealDataCallBack_V2(handle, real_data_callback_v2, (long)stm)==0)
 		{
 			printf("[%s]set video callback failed!\n", __FUNCTION__);
 			return SET_VIDEO_CALLBACK_FAILED;
 		}
+		
+		stm->playhandle = handle;
+		stm->stm.pulling = 1;
+		stm->stm.callback = req->Callback;
+		stm->stm.userdata = req->UserData;		
+		rsp->StreamHandle = (long)stm;
 	}
 
 	return SUCCESS;
@@ -603,17 +670,36 @@ static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 
 				for(int i=0; i<NET_MAX_CHANNUM; ++i)
 				{
+					if(EncodeConfig.vEncodeConfigAll[i].dstMainFmt.bVideoEnable)
+					{
+						int width = 0, height = 0;
+						GetResolution(EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.iResolution
+							, &width, &height);
+						printf("[%s]dstMainFmt width %d, height %d, venable %d, FPS %d, BitRate %d, GOP %d, encode %d\n"
+							, __FUNCTION__, width, height
+							, EncodeConfig.vEncodeConfigAll[i].dstMainFmt.bVideoEnable
+							, EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.nFPS
+							, EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.nBitRate
+							, EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.iGOP
+							, GetEncodeMode(EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.iCompression));
 
-					int width = 0, height = 0;
-					GetResolution(EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.iResolution
-						, &width, &height);
-					printf("[%s]width %d, height %d, venable %d, FPS %d, BitRate %d, GOP %d, encode %d\n"
-						, __FUNCTION__, width, height
-						, EncodeConfig.vEncodeConfigAll[i].dstMainFmt.bVideoEnable
-						, EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.nFPS
-						, EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.nBitRate
-						, EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.iGOP
-						, GetEncodeMode(EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.iCompression));
+					}
+
+					if(EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.bVideoEnable)
+					{
+						int width = 0, height = 0;
+						GetResolution(EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.vfFormat.iResolution
+							, &width, &height);
+						printf("[%s]dstExtraFmt width %d, height %d, venable %d, FPS %d, BitRate %d, GOP %d, encode %d\n"
+							, __FUNCTION__, width, height
+							, EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.bVideoEnable
+							, EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.vfFormat.nFPS
+							, EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.vfFormat.nBitRate
+							, EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.vfFormat.iGOP
+							, GetEncodeMode(EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.vfFormat.iCompression));
+					
+					}
+
 				}
 				
 			}
@@ -696,6 +782,77 @@ static int  xm_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_
 	}
 	
 	return SUCCESS;
+}
+static int xm_ptz_control(struct device * dev, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp)
+{
+	printf("[%s]\n", __FUNCTION__);
+	
+	assert(dev!=NULL);
+
+	if(get_device(dev)==NULL)
+	{
+		printf("[%s]dev %p no find\n", __FUNCTION__, dev);
+		return DEVICE_NO_FOUND;		
+	}
+
+	xmdevice *xmdev = (xmdevice *)dev;
+
+	switch(req->Action)
+	{
+		case PTZ_STOP:
+			H264_DVR_PTZControl(xmdev->loginid, req->Channel, 0, 1, 0);
+		break;
+		case PTZ_MOVE:
+			if(PTZ_UP) 
+				H264_DVR_PTZControl(xmdev->loginid, req->Channel, TILT_UP, 0, req->Speed);
+			else if(PTZ_DOWN)
+				H264_DVR_PTZControl(xmdev->loginid, req->Channel, TILT_DOWN, 0, req->Speed);
+			else if(PTZ_LEFT) 
+				H264_DVR_PTZControl(xmdev->loginid, req->Channel, PAN_LEFT, 0, req->Speed);
+			else if(PTZ_RIGHT) 
+				H264_DVR_PTZControl(xmdev->loginid, req->Channel, PAN_RIGHT, 0, req->Speed);
+			else if(PTZ_LEFT_UP) 
+				H264_DVR_PTZControl(xmdev->loginid, req->Channel, PAN_LEFTTOP, 0, req->Speed);
+			else if(PTZ_DOWN_LEFT) 
+				H264_DVR_PTZControl(xmdev->loginid, req->Channel, PAN_LEFTDOWN, 0, req->Speed);
+			else if(PTZ_UP_RIGHT) 
+				H264_DVR_PTZControl(xmdev->loginid, req->Channel, PAN_RIGTHTOP, 0, req->Speed);
+			else if(PTZ_DOWN_RIGHT) 
+				H264_DVR_PTZControl(xmdev->loginid, req->Channel, PAN_RIGTHDOWN, 0, req->Speed);
+			else
+			{
+				printf("[%s]dev %p, PTZ_MOVE, unkonwn direct\n", __FUNCTION__, dev);
+				return UNKONWN_PTZ_COMMAND;
+			}
+		break;
+		case PTZ_PUSH_FAR:
+			H264_DVR_PTZControl(xmdev->loginid, req->Channel, ZOOM_OUT, 0, req->Speed);
+		break;
+		case PTZ_PULL_NEAR:
+			H264_DVR_PTZControl(xmdev->loginid, req->Channel, ZOOM_IN, 0, req->Speed);
+		break;
+		case PTZ_IRIS_ADD:
+			H264_DVR_PTZControl(xmdev->loginid, req->Channel, IRIS_OPEN, 0, req->Speed);
+		break;
+		case PTZ_IRIS_SUB:
+			H264_DVR_PTZControl(xmdev->loginid, req->Channel, IRIS_CLOSE, 0, req->Speed);
+		break;		
+		case PTZ_FOCUS_FAR:
+			H264_DVR_PTZControl(xmdev->loginid, req->Channel, FOCUS_FAR, 0, req->Speed);
+		break;
+		case PTZ_FOCUS_NEAR:
+			H264_DVR_PTZControl(xmdev->loginid, req->Channel, FOCUS_NEAR, 0, req->Speed);
+		break;
+		case SET_PRESET:
+			H264_DVR_PTZControlEx(xmdev->loginid, req->Channel, EXTPTZ_POINT_SET_CONTROL, req->PresetNum, 2, 3, 0);
+		case CLEAR_PRESET:
+			H264_DVR_PTZControlEx(xmdev->loginid, req->Channel, EXTPTZ_POINT_DEL_CONTROL, req->PresetNum, 2, 3, 0);
+		default:
+			printf("[%s]dev %p, PTZ, unkonwn cmd %d\n", __FUNCTION__, dev, req->Action);
+			return UNKONWN_PTZ_COMMAND;
+	}
+
+	return 0;
 }
 
 

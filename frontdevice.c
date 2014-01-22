@@ -38,7 +38,7 @@ struct device *alloc_device( const struct device_ops *ops)
 		dev->obj.parent = NULL;
         dev->ops      = ops;
 		dev->dev_type = ops->type;
-
+		dev->deleted = 0;
 		list_init(&dev->entry);//should add to devices list
 		
         list_init(&dev->channels);
@@ -87,7 +87,7 @@ struct channel *alloc_channel(size_t size)
     	chn->obj.ref = 1;
 		chn->obj.parent = NULL;
 		chn->obj.type = OBJECT_TYPE_CHANNEL;
-		chn->obj.name = "";
+		chn->obj.name = (char*)"";
 		chn->id	  = -1;
 		list_init( &chn->entry);
         list_init( &chn->streams);
@@ -152,7 +152,7 @@ struct stream *alloc_stream(size_t size)
     	memset(stm, 0, size);
 		stm->obj.ref = 1;
 		stm->obj.parent = 0;
-		stm->obj.name = "";
+		stm->obj.name = (char*)"";
 		stm->obj.type = OBJECT_TYPE_STREAM;
 		stm->id	  = -1;
 		stm->pulling = 0;

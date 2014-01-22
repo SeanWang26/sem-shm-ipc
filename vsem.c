@@ -165,7 +165,7 @@ int create_vsem(const char *filename)
 		return -1;
 	}
 
-	
+	return semkey;
 }
 
 int open_vsem(const char *filename)

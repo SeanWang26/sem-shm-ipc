@@ -10,6 +10,8 @@ struct xmdevice
 	struct device 	dev;
 	long 			loginid;
 	long			voicehandle;//¶Ô½²¾ä±ú
+	void*           voice_callback;
+	void*           userdata;
 	H264_DVR_DEVICEINFO info;
 };
 
@@ -26,5 +28,7 @@ struct xmstream
 };
 
 struct xmdevice *xm_alloc_device();
+
+#define XM_INVALIDE_LOGINID -1
 
 #endif

@@ -27,6 +27,10 @@ struct device
 	object                    obj;
 	const struct device_ops*  ops;
 	int                       dev_type;
+	char                      ip[32];
+	unsigned short            port;
+	char					  user[32];
+	char					  password[32];
 	struct list               entry;
 	int                       deleted;
 	//lock					lock;//Ëø×¡listÓÃ????
@@ -51,6 +55,7 @@ struct device_ops
 	int  (*set_config)(struct device *);
 	int  (*open_alarm_stream)(struct device *, struct stOpenAlarmStream_Req *req, struct stOpenAlarmStream_Rsp *rsp);
 	int  (*close_alarm_stream)(struct device *, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Req *rsp);
+	int  (*ptz_control)(struct device *, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp);
 };
 
 struct channel
@@ -68,6 +73,8 @@ struct stream
 	int                  pulling;
 	struct channel*      chn;
 	struct list          entry;
+	void*                callback;
+	void*                userdata;
 };
 
 struct device_debug
@@ -90,5 +97,20 @@ struct stream* add_stream(struct channel* channel, struct stream *newstm);
 struct stream* get_stream(struct list *streams, int stmid);
 
 extern struct list devicelist;
+
+#define FIND_DEVICE_BEGIN(ctype,opstype)    struct device* device; 												\
+	  										LIST_FOR_EACH_ENTRY(device, &devicelist, struct device, entry) \
+	  										{ 																\
+	  											assert(device->obj.type == OBJECT_TYPE_DEVICE); 			\
+	  											if(!device->deleted && device->ops->type == opstype )			 \
+	  											{ \
+	  												ctype* dev = (ctype*)device; \
+									
+
+
+#define FIND_DEVICE_END    		} \
+							}
+
+
 
 #endif

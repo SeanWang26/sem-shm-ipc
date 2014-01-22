@@ -47,7 +47,7 @@ void* task_work2(void *cmd)
 
 		post_vsem(semid3);
 
-	}
+}
 int open_vsem(const char *filename);
 
 int waittimeout_vsem(int semid, struct timespec *timeout);
@@ -113,15 +113,26 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 		}
 	}
 
-	{
-		/*struct stOpenVideoStream_Req req = {0,0,0,(void*)_real_staream_callback};
+	/*{
+		struct stOpenVideoStream_Req req = {0,0,0,(void*)_real_staream_callback};
 		struct stOpenVideoStream_Rsp rsp;
 
 		if(dev->ops->open_video_stream(dev, &req, &rsp))
 		{
-			printf("logout failed\n");
-		}*/
+			printf("open_video_stream failed\n");
+		}
+	}*/
+
+	{
+		struct stOpenAudioStream_Req req = {0,0};
+		struct stOpenAudioStream_Rsp rsp;
+
+		if(dev->ops->open_audio_stream(dev, &req, &rsp))
+		{
+			printf("open_audio_stream failed\n");
+		}
 	}
+
 	
 	{
 		struct stOpenAlarmStream_Req req = {0};
