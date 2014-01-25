@@ -4,7 +4,7 @@
 #include "command.h"
 #include "list.h"
 #include "plugerror.h"
-
+#include "devicetype.h"
 
 #define OBJECT_TYPE_DEVICE	1
 #define OBJECT_TYPE_CHANNEL	2
@@ -66,6 +66,9 @@ struct channel
 	struct list     streams;
 };
 
+struct st_stream_data;
+typedef int (*stream_callback)(struct st_stream_data* data, void* user);
+
 struct stream
 {
 	object               obj;
@@ -73,7 +76,7 @@ struct stream
 	int                  pulling;
 	struct channel*      chn;
 	struct list          entry;
-	void*                callback;
+	stream_callback      callback;
 	void*                userdata;
 };
 
@@ -84,9 +87,11 @@ struct device_debug
 
 typedef int (*real_staream_callback)(stream* stm, const void *pFrame, unsigned int user);
 
-struct device* alloc_device( const struct device_ops *ops);
+struct device* alloc_device(unsigned int type);
+struct device *_alloc_device( const struct device_ops *ops);//放到ops里去
 struct device *add_device(struct device *dev);
 struct device *get_device(struct device *dev);
+struct device *get_device_by_address(struct device *dev, char* ip, unsigned int port);//老的接口没有提供增加设备的命令，就直接登陆了，所以要检查是否有同ip，port的设备了
 
 struct channel *alloc_channel(size_t size);
 struct channel* add_channel(struct device *dev, struct channel *newchn);
@@ -112,5 +117,43 @@ extern struct list devicelist;
 							}
 
 
+struct st_stream_data
+{
+	unsigned int streamtype;
+	char* pdate;
+	int   datalen;
+	union 
+	{
+		struct
+		{
+			unsigned int encode;
+			unsigned int frametype;
+			unsigned int width;
+			unsigned int height;
+			float        fps;
+			unsigned int bitrate;
+		}video_stream_info;
+		struct
+		{
+			unsigned int  encode;
+			unsigned char channel;
+			int           samples;
+			unsigned char depth;
+			unsigned int  reserved;//bitrate,  bps
+		}audio_stream_info;
+		struct
+		{
+			int           reason;
+		}alarm_stream_info;
+	}stream_info;
+	int year;					// 时标:年		
+	int month; 					// 时标:月
+	int day;					// 时标:日
+	int hour;					// 时标:时
+	int minute;					// 时标:分
+	int second;					// 时标:秒
+
+	unsigned int reserved[3];
+};
 
 #endif

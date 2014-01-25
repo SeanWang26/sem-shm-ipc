@@ -47,12 +47,7 @@ void* task_work2(void *cmd)
 
 		post_vsem(semid3);
 
-}
-int open_vsem(const char *filename);
-
-int waittimeout_vsem(int semid, struct timespec *timeout);
-int close_vsem(int semid);
-int remove_vsem(const char * filename);
+	}
 	
 	return 0;
 }
@@ -77,7 +72,7 @@ int post_task()
 
 int _real_staream_callback(stream* stm, const void *pFrame, unsigned int user)
 {
-
+	printf("_real_staream_callback\n");
 	return 0;
 }
 
@@ -90,6 +85,22 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 	}
 	
 	dev->ops->init(dev);
+
+	dev->ops->init(dev);
+	{
+		stLogin_Req req;
+		strcpy(req.Ip, Ip);
+		req.Port = Port;
+		strcpy(req.User, Name);
+		strcpy(req.Password, Password);
+		
+		stLogin_Rsp rsp;
+		if(dev->ops->login(dev, &req, &rsp))
+		{
+			printf("login failed\n");
+		}
+	}
+
 	{
 		stLogin_Req req;
 		strcpy(req.Ip, Ip);
@@ -113,7 +124,17 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 		}
 	}
 
-	/*{
+	{
+		struct stOpenVideoStream_Req req = {0,0,1,(void*)_real_staream_callback};
+		struct stOpenVideoStream_Rsp rsp;
+
+		if(dev->ops->open_video_stream(dev, &req, &rsp))
+		{
+			printf("open_video_stream failed\n");
+		}
+	}
+
+	{
 		struct stOpenVideoStream_Req req = {0,0,0,(void*)_real_staream_callback};
 		struct stOpenVideoStream_Rsp rsp;
 
@@ -121,9 +142,11 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 		{
 			printf("open_video_stream failed\n");
 		}
-	}*/
+	}
 
-	{
+
+
+	/*{
 		struct stOpenAudioStream_Req req = {0,0};
 		struct stOpenAudioStream_Rsp rsp;
 
@@ -131,7 +154,7 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 		{
 			printf("open_audio_stream failed\n");
 		}
-	}
+	}*/
 
 	
 	{
@@ -178,7 +201,7 @@ int main(int argc, char** argv)
 
 	}*/
 
-	getxmvefeo("192.168.1.238", 34567, "user", "user");
+	getxmvefeo("192.168.1.71", 34567, "user", "user");
 	/*getxmvefeo("192.168.1.78", 34567, "admin", "");
 	getxmvefeo("192.168.1.76", 34567, "user", "user");
 	getxmvefeo("192.168.1.10", 34567, "admin", "");

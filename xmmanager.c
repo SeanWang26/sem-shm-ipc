@@ -2,7 +2,6 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
-
 #include "xmmanager.h"
 #include "devicetype.h"
 
@@ -44,7 +43,7 @@ static struct device_ops xm_ops[] =
 	xm_ptz_control
 };
 
-void disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
+void xm_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
 {
 	FIND_DEVICE_BEGIN(struct xmdevice,DEVICE_XM)
 	{
@@ -57,37 +56,79 @@ void disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned 
 	}
 	FIND_DEVICE_END
 }
+static int xm_pack_type_convert(enum MEDIA_PACK_TYPE type)
+{
+	if(VIDEO_P_FRAME==type)
+		return P_FRAME;
+	else if(VIDEO_I_FRAME==type) 
+		return I_FRAME;
+	else if(VIDEO_B_FRAME==type || VIDEO_BP_FRAME==type ||VIDEO_BBP_FRAME==type)
+		return B_FRAME;
+	
+	/*
+	enum MEDIA_PACK_TYPE
+	{
+		FILE_HEAD = 0,				// 文件头
+		VIDEO_I_FRAME = 1,			// 视频I帧
+		VIDEO_B_FRAME = 2,			// 视频B帧
+		VIDEO_P_FRAME = 3,			// 视频P帧
+		VIDEO_BP_FRAME = 4, 		// 视频BP帧
+		VIDEO_BBP_FRAME = 5,		// 视频B帧B帧P帧
+		VIDEO_J_FRAME = 6,			// 图片帧
+		AUDIO_PACKET = 10,			// 音频包
+	};
+	*/
+	return UNKNOWN_FRAME;
+}
 
 static int real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFrame, unsigned int dwUser)
 {
 	//lock
 	struct xmstream* stream = (struct xmstream*)dwUser;
-	//stream->stm.callback(stream->stm.userdata);
-		
-
-	/*int		nPacketType;				// 包类型,见MEDIA_PACK_TYPE
-	char*	pPacketBuffer;				// 缓存区地址
-	unsigned int	dwPacketSize;				// 包的大小
-
-	// 绝对时标
-	int		nYear;						// 时标:年		
-	int		nMonth;						// 时标:月
-	int		nDay;						// 时标:日
-	int		nHour;						// 时标:时
-	int		nMinute;					// 时标:分
-	int		nSecond;					// 时标:秒
-	unsigned int 	dwTimeStamp;					// 相对时标低位，单位为毫秒
-	unsigned int	dwTimeStampHigh;        //相对时标高位，单位为毫秒
-	unsigned int   dwFrameNum;             //帧序号
-	unsigned int   dwFrameRate;            //帧率
-	unsigned short uWidth;              //图像宽度
-	unsigned short uHeight;             //图像高度
-	unsigned int       Reserved[6];            //保留
-*/
-
-
 	printf("xm get frame user %p, type %d, size %u\n", stream, pFrame->nPacketType, pFrame->dwPacketSize);
+
+
+	/*typedef struct
+	{
+		int 	nPacketType;				// 包类型,见MEDIA_PACK_TYPE
+		char*	pPacketBuffer;				// 缓存区地址
+		unsigned int	dwPacketSize;				// 包的大小
 	
+		// 绝对时标
+		int 	nYear;						// 时标:年		
+		int 	nMonth; 					// 时标:月
+		int 	nDay;						// 时标:日
+		int 	nHour;						// 时标:时
+		int 	nMinute;					// 时标:分
+		int 	nSecond;					// 时标:秒
+		unsigned int	dwTimeStamp;					// 相对时标低位，单位为毫秒
+		unsigned int	dwTimeStampHigh;		//相对时标高位，单位为毫秒
+		unsigned int   dwFrameNum;			   //帧序号
+		unsigned int   dwFrameRate; 		   //帧率
+		unsigned short uWidth;				//图像宽度
+		unsigned short uHeight; 			//图像高度
+		unsigned int	   Reserved[6]; 		   //保留
+	} PACKET_INFO_EX;*/
+
+	st_stream_data stmdata;
+	stmdata.streamtype = VIDEO_STREAM_DATA;
+	stmdata.pdate= pFrame->pPacketBuffer;
+	stmdata.datalen = pFrame->dwPacketSize;
+	stmdata.stream_info.video_stream_info.encode = stream->currentencode;
+	stmdata.stream_info.video_stream_info.frametype = xm_pack_type_convert((enum MEDIA_PACK_TYPE)pFrame->nPacketType);
+	stmdata.stream_info.video_stream_info.width = pFrame->dwPacketSize;
+	stmdata.stream_info.video_stream_info.height = pFrame->dwPacketSize;
+	stmdata.stream_info.video_stream_info.fps = 0;
+	stmdata.stream_info.video_stream_info.bitrate = 0;
+	stmdata.year = pFrame->nYear;
+	stmdata.month = pFrame->nMonth;
+	stmdata.day = pFrame->nDay;
+	stmdata.hour = pFrame->nHour;
+	stmdata.minute = pFrame->nMinute;
+	stmdata.second = pFrame->nSecond;
+	
+	stream->stm.callback(&stmdata, stream->stm.userdata);
+
 	// it must return TRUE if decode successfully,or the SDK will consider the decode is failed
 	return 1;
 }
@@ -144,8 +185,7 @@ static inline int handle_alarm(xmdevice *device, char *pBuf, unsigned long dwBuf
 	return 0;
 }
 
-
-bool mess_callback(long lLoginID, char *pBuf, unsigned long dwBufLen, long dwUser)
+static bool xm_mess_callback(long lLoginID, char *pBuf, unsigned long dwBufLen, long dwUser)
 {
 	//lock
 	struct device* device;
@@ -165,7 +205,7 @@ bool mess_callback(long lLoginID, char *pBuf, unsigned long dwBufLen, long dwUse
 	return 1;
 }
 
-static int GetResolution(int type, int *width, int *height)
+static int xm_resolution_convert(int type, int *width, int *height)
 {
 	printf("[%s]type %d\n", __FUNCTION__, type);
 
@@ -288,7 +328,7 @@ static int GetEncodeMode(int type)
 
 struct xmdevice *xm_alloc_device()
 {
-	xmdevice *device = (xmdevice *)alloc_device(xm_ops);
+	xmdevice *device = (xmdevice *)_alloc_device(xm_ops);
 	if(device)
 	{
 		device->loginid = XM_INVALIDE_LOGINID;
@@ -302,11 +342,11 @@ struct xmdevice *xm_alloc_device()
 static int xm_init(struct device *dev)
 {
 	printf("[%s]\n", __FUNCTION__);
-	if(!g_initaled && H264_DVR_Init(disconnect_callback, (unsigned long)&devicelist))
+	if(!g_initaled && H264_DVR_Init(xm_disconnect_callback, (unsigned long)&devicelist))
 	{
 		list_init(&devicelist);
 		
-		H264_DVR_SetDVRMessCallBack(mess_callback, (unsigned long)&devicelist);
+		H264_DVR_SetDVRMessCallBack(xm_mess_callback, (unsigned long)&devicelist);
 		printf("[%s]init success %d\n", __FUNCTION__, g_initaled);
 		++g_initaled;
 	}
@@ -374,9 +414,9 @@ static int xm_login(struct device *dev, struct stLogin_Req *req, struct stLogin_
 	xmdev->loginid = H264_DVR_Login((char*)dev->ip, dev->port,(char*)dev->user, (char*)dev->password,(LPH264_DVR_DEVICEINFO)(&xmdev->info),&err);		
 	if(xmdev->loginid > 0)
 	{
-		printf("[%s]xmdev login success, %s, %d, %s, %s\n"
-			, __FUNCTION__, req->Ip, req->Port, req->User, req->Password);
-		return 0;
+		printf("[%s]xmdev login success, %s, %d, %s, %s, %ld\n"
+			, __FUNCTION__, req->Ip, req->Port, req->User, req->Password, xmdev->loginid);
+		return SUCCESS;
 	}
 	else
 	{
@@ -410,7 +450,7 @@ static int xm_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 		xmdev->loginid = 0;
 		memset(&xmdev->info,0,sizeof(xmdev->info));
 		printf("[%s]xmdev xm_logout success\n", __FUNCTION__);
-		return 0;		
+		return SUCCESS;		
 	}
 	else
 	{
@@ -493,8 +533,11 @@ static int xm_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	playstru.nChannel = req->Channel;
 	playstru.nStream = req->Codec;
 	playstru.nMode = 0;
+
+	printf("[%s]before H264_DVR_RealPlay %ld, channel %d, nStream %d\n"
+			, __FUNCTION__, xmdev->loginid, req->Channel, req->Codec);
 	long handle = H264_DVR_RealPlay(xmdev->loginid, &playstru);	
-	if(handle <= 0 )
+	if(handle <= 0)
 	{
 		printf("[%s]start real stream wrong! m_iPlayhandle %ld, channel %d, nStream %d\n"
 			, __FUNCTION__, handle, req->Channel, req->Codec);
@@ -503,17 +546,20 @@ static int xm_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	else
 	{
 		printf("[%s]start real stream ok\n", __FUNCTION__);
+		stm->playhandle = handle;
+		stm->stm.pulling = 1;
+		stm->currentencode = VIDEO_ENCODE_VIDEO_H264;//先默认了
+		stm->stm.callback = (stream_callback)req->Callback;
+		if(stm->stm.userdata) 
+			free(stm->stm.userdata);//////danger!!!!!!!!
+		stm->stm.userdata = req->UserData;
+		rsp->StreamHandle = (long)stm;
+
 		if(H264_DVR_SetRealDataCallBack_V2(handle, real_data_callback_v2, (long)stm)==0)
 		{
 			printf("[%s]set video callback failed!\n", __FUNCTION__);
 			return SET_VIDEO_CALLBACK_FAILED;
 		}
-		
-		stm->playhandle = handle;
-		stm->stm.pulling = 1;
-		stm->stm.callback = req->Callback;
-		stm->stm.userdata = req->UserData;		
-		rsp->StreamHandle = (long)stm;
 	}
 
 	return SUCCESS;
@@ -567,6 +613,9 @@ static int xm_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 		printf("[%s]H264_DVR_StopRealPlay ok!\n", __FUNCTION__);
 		stm->stm.pulling = 0;
 		stm->playhandle = 0L;
+		stm->stm.callback = NULL;
+		free(stm->stm.userdata);
+		stm->stm.userdata = NULL;
 	}
 	else
 	{
@@ -673,7 +722,7 @@ static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 					if(EncodeConfig.vEncodeConfigAll[i].dstMainFmt.bVideoEnable)
 					{
 						int width = 0, height = 0;
-						GetResolution(EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.iResolution
+						xm_resolution_convert(EncodeConfig.vEncodeConfigAll[i].dstMainFmt.vfFormat.iResolution
 							, &width, &height);
 						printf("[%s]dstMainFmt width %d, height %d, venable %d, FPS %d, BitRate %d, GOP %d, encode %d\n"
 							, __FUNCTION__, width, height
@@ -688,7 +737,7 @@ static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 					if(EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.bVideoEnable)
 					{
 						int width = 0, height = 0;
-						GetResolution(EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.vfFormat.iResolution
+						xm_resolution_convert(EncodeConfig.vEncodeConfigAll[i].dstExtraFmt.vfFormat.iResolution
 							, &width, &height);
 						printf("[%s]dstExtraFmt width %d, height %d, venable %d, FPS %d, BitRate %d, GOP %d, encode %d\n"
 							, __FUNCTION__, width, height

@@ -4,6 +4,9 @@
 #include <assert.h>
 #include "list.h"
 #include "frontdevice.h"
+#include "devicetype.h"
+
+#include "xmmanager.h"
 
 /* grab an object (i.e. increment its refcount) and return the object */
 
@@ -27,7 +30,7 @@ void release_object( void *ptr )
 	__sync_fetch_and_sub(&obj->ref,1);
 }
 
-struct device *alloc_device( const struct device_ops *ops)
+struct device *_alloc_device( const struct device_ops *ops)
 {
     struct device *dev = (struct device *)malloc(ops->size);
     if (dev)
@@ -46,11 +49,28 @@ struct device *alloc_device( const struct device_ops *ops)
 		list_init(&dev->outputs);
         return dev;
     }
+	
     return (struct device *)NULL;
+}
+
+struct device *alloc_device(unsigned int type)
+{
+	if(type==DEVICE_XM)
+	{
+		return (struct device *)xm_alloc_device();
+	}
+
+	return (struct device *)NULL;
 }
 
 struct device *add_device(struct device *dev)
 {
+	if(dev==NULL) 
+	{
+		printf("[%s]dev==NULL\n");
+		return NULL;
+	}
+	
 	struct device* device;
 	LIST_FOR_EACH_ENTRY(device, &devicelist, struct device, entry)
 	{
@@ -73,6 +93,21 @@ struct device *get_device(struct device *dev)
 		if(device == dev)
 		{	
 			return dev;
+		}
+	}	
+
+	return NULL;
+}
+struct device *get_device_by_address(char* ip, unsigned int port)
+{
+	assert(ip != NULL && strlen(ip)>6);
+
+	struct device* device;
+	LIST_FOR_EACH_ENTRY(device, &devicelist, struct device, entry)
+	{
+		if(strcmp(device->ip, ip)==0 && device->port==port)
+		{	
+			return device;
 		}
 	}	
 
@@ -106,8 +141,6 @@ struct channel* add_channel(struct device *dev, struct channel *newchn)
 		if(chn->id == newchn->id)
 		{	
 			printf("[%s]find channel record %d\n", __FUNCTION__, chn->id);
-			//copy info to old???
-			
 			assert(0);
 		}
 	}
@@ -146,6 +179,7 @@ struct channel* get_channel(struct list *channels, int chnid)
 
 struct stream *alloc_stream(size_t size)
 {
+	printf("[%s]\n", __FUNCTION__);
     struct stream *stm = (struct stream *)malloc(size);
     if (stm)
     {
@@ -199,12 +233,12 @@ struct stream* get_stream(struct list* streams, int stmid)
 	{
 		if(stm->id==stmid)
 		{
-			printf("[%s]find sream record, stm %d\n", __FUNCTION__, stmid);
+			printf("[%s]find stream record, stm %d\n", __FUNCTION__, stmid);
 			return stm;
 		}
 	}
 	
-	printf("[%s]no sream record, stm %d\n", __FUNCTION__, stmid);
+	printf("[%s]no stream record, stm %d\n", __FUNCTION__, stmid);
 						
 	return NULL;
 }

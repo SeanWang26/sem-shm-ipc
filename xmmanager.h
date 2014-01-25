@@ -3,7 +3,7 @@
 
 #include "frontdevice.h"
 #include "netsdk.h"
-#include "devicetype.h"
+
 
 struct xmdevice
 {
@@ -25,6 +25,7 @@ struct xmstream
 	struct stream stm;
 	long playhandle;
 	long audiohandle;
+	int  currentencode;//当前是何种编码，xm的回调里没有说明，这里保存一个
 };
 
 struct xmdevice *xm_alloc_device();
