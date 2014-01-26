@@ -139,8 +139,23 @@ void talk_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, char b
 	{
 		if(dev->voicehandle == lTalkHandle)
 		{
-			//((xmdevice*)device)->voice_callback(((xmdevice*)device)->voice_callbackuserdata);
-			printf("[%s]device %p, lTalkHandle %ld\n", __FUNCTION__, (void*)dev, lTalkHandle);
+			struct channel* chn; 												
+			LIST_FOR_EACH_ENTRY(chn, &dev->dev.channels, struct channel, entry) 
+			{
+				if(chn->audiocallback && chn->audiouserdata)
+				{
+					st_stream_data stmdata;
+					stmdata.streamtype = AUDIO_STREAM_DATA;
+					stmdata.pdate= pDataBuf;
+					stmdata.datalen = dwBufSize;
+
+					printf("[%s]device %p, lTalkHandle %ld, chn %d\n"
+						, __FUNCTION__, (void*)dev, lTalkHandle, chn->id);
+					chn->audiocallback(&stmdata, chn->audiouserdata);
+				}
+			}
+		
+		
 			break;
 		}
 
@@ -182,6 +197,7 @@ static inline int handle_alarm(xmdevice *device, char *pBuf, unsigned long dwBuf
 		
 	}
 
+	//device->dev.alarmcallback(device->dev.alarmuserdata);
 	return 0;
 }
 
@@ -367,26 +383,37 @@ static int xm_uninit(struct device *dev)
 
 static int xm_device_init(struct xmdevice *dev)
 {
-	dev->loginid = XM_INVALIDE_LOGINID;
-
 	struct channel* channel;
 	LIST_FOR_EACH_ENTRY(channel, &dev->dev.channels, struct channel, entry)
 	{
-		assert(channel->obj.type == OBJECT_TYPE_CHANNEL);
-
+		struct xmchannel* xmchannel = (struct xmchannel*)channel;
+		assert(xmchannel->chn.obj.type == OBJECT_TYPE_CHANNEL);
 		struct stream* stream;
-		LIST_FOR_EACH_ENTRY(stream, &channel->streams, struct stream, entry)
+		LIST_FOR_EACH_ENTRY(stream, &xmchannel->chn.streams, struct stream, entry)
 		{
-			assert(stream->obj.type == OBJECT_TYPE_STREAM);
-			stream->pulling = 0;
-			stream->callback = NULL;
-			stream->userdata = NULL;
-			H264_DVR_SetRealDataCallBack_V2(((struct xmstream*)stream)->playhandle, NULL, 0);
-			H264_DVR_StopVoiceCom(dev->voicehandle);///?????? need
-			dev->voicehandle = 0;
+			struct xmstream* xmstream = (struct xmstream*)stream;
+			assert(xmstream->stm.obj.type == OBJECT_TYPE_STREAM);
+			xmstream->currentencode = VIDEO_ENCODE_UNKNOW;
+			xmstream->playhandle = XM_INVALIDE_PLAYHANDLE;
+			xmstream->stm.pulling = 0;
+			xmstream->stm.callback = NULL;
+			if(xmstream->stm.userdata)
+			{
+				free(xmstream->stm.userdata);
+				xmstream->stm.userdata = NULL;
+			}
+
 			memset(&dev->info, 0, sizeof(dev->info));
 		}
+
+		xmchannel->chn.audiocallback = NULL;
+		xmchannel->chn.audiouserdata = NULL;//free
 	}
+
+	dev->voicehandle = 0;
+	dev->dev.alarmcallback = NULL;
+	dev->dev.alarmuserdata = NULL;	//free
+	dev->loginid = XM_INVALIDE_LOGINID;
 
 	return 0;
 }
@@ -447,8 +474,7 @@ static int xm_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 
 	if(H264_DVR_Logout(xmdev->loginid))
 	{
-		xmdev->loginid = 0;
-		memset(&xmdev->info,0,sizeof(xmdev->info));
+		xm_device_init(xmdev);
 		printf("[%s]xmdev xm_logout success\n", __FUNCTION__);
 		return SUCCESS;		
 	}
@@ -625,6 +651,39 @@ static int xm_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 	
 	return SUCCESS;
 }
+static int xm_operator_channel(struct channel *chn, int type, void* data)
+{
+	if(STOP_AUDIO==type)
+	{
+		chn->audiocallback = NULL;
+		if(chn->audiouserdata) 
+		{
+			//////danger!!!!!!!!
+			void* tmp = chn->audiouserdata;
+			chn->audiouserdata = NULL;
+			free(tmp);
+
+			return 1;
+		}
+	}
+	else if(START_AUDIO==type)
+	{
+		struct stOpenAudioStream_Req *req = (struct stOpenAudioStream_Req *)data;
+		chn->audiocallback = (stream_callback)req->Callback;
+		if(chn->audiouserdata) 
+			free(chn->audiouserdata);//////danger!!!!!!!!
+		chn->audiouserdata = req->UserData;
+	}
+	else if(CHCHK_AUDIO_CHANNEL==type)
+	{
+		if(chn->audiocallback && chn->audiouserdata)
+		{
+			++(*((int*)data));
+		}
+	}
+
+	return 0;
+}
 static int xm_open_audio_stream(struct device *dev, struct stOpenAudioStream_Req *req, struct stOpenAudioStream_Rsp *rsp)
 {
 	printf("[%s]\n", __FUNCTION__);
@@ -638,13 +697,25 @@ static int xm_open_audio_stream(struct device *dev, struct stOpenAudioStream_Req
 		return DEVICE_NULL_FAILED;
 	}
 
-	long voicehandle = H264_DVR_StartVoiceCom_MR(xmdev->loginid, talk_data_callback, (long)dev);
-	if(voicehandle > 0)
+	struct xmchannel* chn = NULL;
+	chn = (struct xmchannel*)get_channel(&dev->channels, req->Channel);
+	if(chn == NULL)
 	{
-		xmdev->voicehandle = voicehandle;
+		return INVALID_CHANNEL_NO;
 	}
 	
-	printf("[%s]\n", __FUNCTION__);
+	if(xmdev->voicehandle == 0)
+	{
+		long voicehandle = H264_DVR_StartVoiceCom_MR(xmdev->loginid, talk_data_callback, (long)dev);
+		if(voicehandle <= 0)
+		{
+			return OPEN_AUDIO_STREAM_FAILED;
+		}
+		xmdev->voicehandle = voicehandle;
+	}
+
+	rsp->ChannelHandle = (long)do_channel(&dev->channels, req->Channel, xm_operator_channel, START_AUDIO, req);
+
 	return SUCCESS;
 }
 static int xm_close_audio_stream(struct device *dev, struct stCloseAudioStream_Req *req, struct stCloseAudioStream_Rsp *rsp)
@@ -658,24 +729,39 @@ static int xm_close_audio_stream(struct device *dev, struct stCloseAudioStream_R
 	}
 
 	xmdevice *xmdev = (xmdevice *)dev;
-
 	if(xmdev==NULL)
 	{
 		printf("[%s]xmdev null\n", __FUNCTION__);
 		return DEVICE_NULL_FAILED;
 	}
 
-	if(H264_DVR_StopVoiceCom(xmdev->voicehandle))
+	struct xmchannel* chn = NULL;
+	chn = (struct xmchannel*)get_channel(&dev->channels, req->Channel);
+	if(chn == NULL)
 	{
-		printf("[%s]H264_DVR_StopVoiceCom ok\n", __FUNCTION__);
-		xmdev->voicehandle = 0;
+		printf("[%s]no channel %d\n", __FUNCTION__, req->Channel);
+		return INVALID_CHANNEL_NO;
 	}
-	else
+
+	do_channel(&dev->channels, req->Channel, xm_operator_channel, STOP_AUDIO, NULL);
+
+	int havechannelcnt=0;
+	do_each_channel(&dev->channels, xm_operator_channel, CHCHK_AUDIO_CHANNEL, &havechannelcnt);
+	if(havechannelcnt==0)
 	{
-		printf("[%s]H264_DVR_StopVoiceCom error\n", __FUNCTION__);
-		return CLOSE_AUDIO_STREAM_FAILED;
+		//没有需要音频的通道了，关闭他
+		if(H264_DVR_StopVoiceCom(xmdev->voicehandle))
+		{
+			printf("[%s]H264_DVR_StopVoiceCom ok\n", __FUNCTION__);
+			xmdev->voicehandle = 0;
+		}
+		else
+		{
+			printf("[%s]H264_DVR_StopVoiceCom error\n", __FUNCTION__);
+			return CLOSE_AUDIO_STREAM_FAILED;
+		}		
 	}
-	
+
 	return SUCCESS;
 }
 static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct stGetConfig_Rsp *rsp)
@@ -781,7 +867,6 @@ static int xm_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 	}
 
 	xmdevice *xmdev = (xmdevice *)dev;
-
 	if(xmdev==NULL)
 	{
 		printf("[%s]xmdev null\n", __FUNCTION__);
@@ -790,10 +875,24 @@ static int xm_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 
 	if(H264_DVR_SetupAlarmChan(xmdev->loginid))
 	{
+		dev->alarmcallback = (stream_callback)req->Callback;
+		if(dev->alarmuserdata)
+		{	
+			free(dev->alarmuserdata);//danger!!!!!!!!!!!!!
+			dev->alarmuserdata = req->UserData;
+		}
+		rsp->DeviceHandle = (long long)xmdev;
 		printf("[%s]xmdev H264_DVR_SetupAlarmChan ok\n", __FUNCTION__);
 	}
 	else
-	{
+	{	
+		dev->alarmcallback = NULL;	
+		if(dev->alarmuserdata)
+		{
+			free(req->UserData);
+			dev->alarmuserdata = NULL;
+		}
+	
 		printf("[%s]xmdev H264_DVR_SetupAlarmChan failed\n", __FUNCTION__);
 		return OPEN_ALARM_STREAM_FAILED;
 	}
@@ -818,6 +917,13 @@ static int  xm_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_
 	{
 		printf("[%s]xmdev null\n", __FUNCTION__);
 		return DEVICE_NULL_FAILED;
+	}
+
+	dev->alarmcallback = NULL;
+	if(dev->alarmuserdata)
+	{
+		free(dev->alarmuserdata);
+		dev->alarmuserdata = NULL;
 	}
 	
 	if(H264_DVR_CloseAlarmChan(xmdev->loginid))

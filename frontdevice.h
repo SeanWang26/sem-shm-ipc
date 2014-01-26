@@ -21,6 +21,8 @@ struct object
 };
 
 struct device_ops;
+struct st_stream_data;
+typedef int (*stream_callback)(struct st_stream_data* data, void* user);
 
 struct device
 {
@@ -37,6 +39,9 @@ struct device
 	struct list               channels;
 	struct list               inputs;
 	struct list               outputs;
+
+	stream_callback           alarmcallback;//报警的回调
+	void*                     alarmuserdata;//报警的用户数据	
 };
 
 struct device_ops
@@ -64,10 +69,10 @@ struct channel
 	int             id;
 	struct list     entry;
 	struct list     streams;
-};
 
-struct st_stream_data;
-typedef int (*stream_callback)(struct st_stream_data* data, void* user);
+	stream_callback      audiocallback;//音频的回调
+	void*                audiouserdata;//音频的用户数据
+};
 
 struct stream
 {
@@ -76,8 +81,8 @@ struct stream
 	int                  pulling;
 	struct channel*      chn;
 	struct list          entry;
-	stream_callback      callback;
-	void*                userdata;
+	stream_callback      callback;//视频的回调
+	void*                userdata;//视频的用户数据
 };
 
 struct device_debug
@@ -96,6 +101,13 @@ struct device *get_device_by_address(struct device *dev, char* ip, unsigned int 
 struct channel *alloc_channel(size_t size);
 struct channel* add_channel(struct device *dev, struct channel *newchn);
 struct channel* get_channel(struct list *channels, int chnid);
+
+#define START_AUDIO 1
+#define STOP_AUDIO  2
+#define CHCHK_AUDIO_CHANNEL 3
+typedef int (*operator_channel)(struct channel *chn, int optype, void* data);
+struct channel* do_channel(struct list *channels, int chnid, operator_channel ope, int optype, void* data);
+int do_each_channel(struct list *channels, operator_channel ope, int optype, void* data);
 
 struct stream *alloc_stream(size_t size);
 struct stream* add_stream(struct channel* channel, struct stream *newstm);

@@ -100,16 +100,19 @@ struct stOpenAudioStream_Req
 {
 	long long				DeviceHandle;
 	unsigned int			Channel;
+	void*                   Callback;
+	void*                   UserData;
 };
 struct stOpenAudioStream_Rsp
 {
 	long long				DeviceHandle;
-	unsigned int			Channel;
+	long					ChannelHandle;
 };
 //πÿ±’“Ù∆µ¡˜
 struct stCloseAudioStream_Req
 {
 	long long				DeviceHandle;
+	long                    ChannelHandle;
 	unsigned int			Channel;
 };
 struct stCloseAudioStream_Rsp
@@ -122,6 +125,8 @@ struct stCloseAudioStream_Rsp
 struct stOpenAlarmStream_Req
 {
 	long long				DeviceHandle;
+	void*                   Callback;
+	void*                   UserData;	
 };
 struct stOpenAlarmStream_Rsp
 {

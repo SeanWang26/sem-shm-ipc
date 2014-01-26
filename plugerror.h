@@ -16,6 +16,7 @@
 #define OPEN_VIDEO_STREAM_FAILED		-11  //打开视频流失败
 #define SET_VIDEO_CALLBACK_FAILED		-12 //设置视频回调失败
 #define CLOSE_VIDEO_STREAM_FAILED		-13  //关闭视频流失败
+#define OPEN_AUDIO_STREAM_FAILED		-13  //关闭视频流失败
 #define CLOSE_AUDIO_STREAM_FAILED       -14  //关闭音频流失败
 #define GET_CONFIG_FAILED               -15  //获取配置失败
 #define OPEN_ALARM_STREAM_FAILED        -16  //开报警失败

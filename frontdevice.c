@@ -47,6 +47,10 @@ struct device *_alloc_device( const struct device_ops *ops)
         list_init(&dev->channels);
 		list_init(&dev->inputs);
 		list_init(&dev->outputs);
+
+		dev->alarmcallback = NULL;
+		dev->alarmuserdata = NULL;
+		
         return dev;
     }
 	
@@ -67,7 +71,7 @@ struct device *add_device(struct device *dev)
 {
 	if(dev==NULL) 
 	{
-		printf("[%s]dev==NULL\n");
+		printf("[%s]dev==NULL\n", __FUNCTION__);
 		return NULL;
 	}
 	
@@ -126,6 +130,9 @@ struct channel *alloc_channel(size_t size)
 		chn->id	  = -1;
 		list_init( &chn->entry);
         list_init( &chn->streams);
+
+		chn->audiocallback = NULL;
+		chn->audiouserdata = NULL;
         return chn;
     }
 	
@@ -152,6 +159,40 @@ struct channel* add_channel(struct device *dev, struct channel *newchn)
 	list_add_tail(&dev->channels, &newchn->entry);
 
 	return newchn;
+}
+
+struct channel* do_channel(struct list *channels, int chnid, operator_channel ope, int optype, void* data)
+{
+	struct channel *chn;
+	if(channels==NULL)
+	{
+		return NULL;
+	}
+
+	LIST_FOR_EACH_ENTRY(chn, channels, struct channel, entry)
+	{
+		if(chn->id == chnid)
+		{	
+			ope(chn, optype, data);
+			return chn;
+		}
+	}
+
+	printf("[%s]no channel record %d\n", __FUNCTION__, chnid);
+	return NULL;
+}
+int do_each_channel(struct list *channels, operator_channel ope, int optype, void* data)
+{
+	struct channel *chn;
+	assert(channels);
+
+	LIST_FOR_EACH_ENTRY(chn, channels, struct channel, entry)
+	{
+		if(ope(chn, optype, data))
+			break;
+	}
+
+	return 0;
 }
 
 struct channel* get_channel(struct list *channels, int chnid)
@@ -191,6 +232,9 @@ struct stream *alloc_stream(size_t size)
 		stm->id	  = -1;
 		stm->pulling = 0;
 		list_init( &stm->entry);
+
+		stm->callback = NULL;
+		stm->userdata = NULL;
         return stm;
     }
 	
