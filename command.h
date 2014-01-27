@@ -56,7 +56,8 @@ struct stGetConfig_Req
 {
 	long long				DeviceHandle;
 	unsigned int			Type;
-	unsigned int			Channel;
+	int	      		        Channel;
+	int                     Codec;
 };
 struct stGetConfig_Rsp
 {

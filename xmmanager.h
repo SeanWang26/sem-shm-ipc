@@ -10,9 +10,8 @@ struct xmdevice
 	struct device 	dev;
 	long 			loginid;
 	long			voicehandle;//对讲句柄
+	long            audiohandle;//              音频信息;
 	H264_DVR_DEVICEINFO info;
-	//              音频信息;
-	long            audiohandle;
 };
 
 struct xmchannel

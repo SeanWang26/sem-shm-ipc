@@ -264,7 +264,50 @@ struct stream* add_stream(struct channel* channel, struct stream *newstm)
 	return newstm;
 }
 
-struct stream* get_stream(struct list* streams, int stmid)
+//add witch dev type???
+struct stream* get_stream_by_dev(struct device *dev, struct stream* stm)
+{
+	struct channel *chn;
+	LIST_FOR_EACH_ENTRY(chn, &dev->channels, struct channel, entry)
+	{
+		struct stream *stream;
+		LIST_FOR_EACH_ENTRY(stream, &chn->streams, struct stream, entry)
+		{
+			printf("[%s]find stream %p, stm %p\n", __FUNCTION__, stream, stm);
+			if(stm==stream)
+			{
+				printf("[%s]find stream record, stm %p\n", __FUNCTION__, stm);
+				return stm;
+			}
+		}
+	}
+
+	return NULL;
+}
+
+struct stream* get_stream(struct list *streams, struct stream* stm)
+{
+	struct stream *stream = NULL;
+	if(streams==NULL)
+	{
+		return NULL;
+	}
+
+	LIST_FOR_EACH_ENTRY(stream, streams, struct stream, entry)
+	{
+		if(stm==stream)
+		{
+			printf("[%s]find stream record, stm %p\n", __FUNCTION__, stm);
+			return stm;
+		}
+	}
+	
+	printf("[%s]no stream record, stm %p\n", __FUNCTION__, stm);
+						
+	return NULL;
+}
+
+struct stream* get_stream_by_id(struct list* streams, int stmid)
 {
 	struct stream *stm = NULL;
 
@@ -277,12 +320,12 @@ struct stream* get_stream(struct list* streams, int stmid)
 	{
 		if(stm->id==stmid)
 		{
-			printf("[%s]find stream record, stm %d\n", __FUNCTION__, stmid);
+			printf("[%s]find stream record, stmid %d\n", __FUNCTION__, stmid);
 			return stm;
 		}
 	}
 	
-	printf("[%s]no stream record, stm %d\n", __FUNCTION__, stmid);
+	printf("[%s]no stream record, stmid %d\n", __FUNCTION__, stmid);
 						
 	return NULL;
 }

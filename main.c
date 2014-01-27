@@ -125,15 +125,16 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 	}
 
 	{
-		struct stOpenVideoStream_Req req = {0,0,1,(void*)_real_staream_callback};
+		/*struct stOpenVideoStream_Req req = {0,0,0,(void*)_real_staream_callback};
 		struct stOpenVideoStream_Rsp rsp;
 
 		if(dev->ops->open_video_stream(dev, &req, &rsp))
 		{
 			printf("open_video_stream failed\n");
-		}
+		}*/
 	}
 
+	while(1)
 	{
 		struct stOpenVideoStream_Req req = {0,0,0,(void*)_real_staream_callback};
 		struct stOpenVideoStream_Rsp rsp;
@@ -142,6 +143,20 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 		{
 			printf("open_video_stream failed\n");
 		}
+
+		sleep(5);
+		struct stCloseVideoStream_Req req2 = {0,0,0,0};
+		struct stCloseVideoStream_Rsp rsp2;
+
+		req2.StreamHandle = rsp.StreamHandle;
+		printf("req2.StreamHandle %d\n", req2.StreamHandle);
+		if(dev->ops->close_video_stream(dev, &req2, &rsp2))
+		{
+			printf("close_video_stream failed\n");
+		}
+		
+		sleep(5);
+
 	}
 
 

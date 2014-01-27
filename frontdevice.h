@@ -24,6 +24,32 @@ struct device_ops;
 struct st_stream_data;
 typedef int (*stream_callback)(struct st_stream_data* data, void* user);
 
+struct encode_info
+{
+	int enable;
+	int encodetype;
+	int fps;
+	int width;
+	int height;
+	int quality;
+	int bitrate;
+	int bitratectl;
+	int gop;
+};
+
+struct channel_encode_info
+{	
+	struct encode_info mainencode;
+	struct encode_info sub1encode;
+};
+
+#define MAX_CHANNEL_ENCODE_INFO 32
+struct dev_encode_info
+{	
+	int last_get_time;
+	struct channel_encode_info encode_info[MAX_CHANNEL_ENCODE_INFO];
+};
+
 struct device
 {
 	object                    obj;
@@ -42,6 +68,8 @@ struct device
 
 	stream_callback           alarmcallback;//报警的回调
 	void*                     alarmuserdata;//报警的用户数据	
+
+	struct dev_encode_info    encodeinfo;
 };
 
 struct device_ops
@@ -111,7 +139,9 @@ int do_each_channel(struct list *channels, operator_channel ope, int optype, voi
 
 struct stream *alloc_stream(size_t size);
 struct stream* add_stream(struct channel* channel, struct stream *newstm);
-struct stream* get_stream(struct list *streams, int stmid);
+struct stream* get_stream_by_id(struct list *streams, int stmid);
+struct stream* get_stream(struct list *streams, struct stream* stm);
+struct stream* get_stream_by_dev(struct device *dev, struct stream* stm);
 
 extern struct list devicelist;
 
@@ -167,5 +197,6 @@ struct st_stream_data
 
 	unsigned int reserved[3];
 };
+
 
 #endif
