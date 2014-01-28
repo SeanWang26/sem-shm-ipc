@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include "xmmanager.h"
 #include <string.h>
@@ -8,6 +9,7 @@
 #include "sem.h"
 #include "vsem.h"
 
+#include "commnvr.h"
 #define PlugVerion "0.0"
 char* semname = "wwww000000000000000000000";
 
@@ -187,7 +189,7 @@ int main(int argc, char** argv)
 {
 	printf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
 
-
+	comm_nvr_init();	
 	/*device *dev = (device *)xm_alloc_device();
 	if(dev==NULL)
 	{
@@ -216,7 +218,7 @@ int main(int argc, char** argv)
 
 	}*/
 
-	getxmvefeo("192.168.1.71", 34567, "user", "user");
+//	getxmvefeo("192.168.1.71", 34567, "user", "user");
 	/*getxmvefeo("192.168.1.78", 34567, "admin", "");
 	getxmvefeo("192.168.1.76", 34567, "user", "user");
 	getxmvefeo("192.168.1.10", 34567, "admin", "");

@@ -113,7 +113,7 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 
 	st_stream_data stmdata;
 	stmdata.streamtype = VIDEO_STREAM_DATA;
-	stmdata.pdate= pFrame->pPacketBuffer;
+	stmdata.pdata= pFrame->pPacketBuffer;
 	stmdata.datalen = pFrame->dwPacketSize;
 	stmdata.stream_info.video_stream_info.encode = stream->currentencode;
 	stmdata.stream_info.video_stream_info.frametype = xm_pack_type_convert((enum MEDIA_PACK_TYPE)pFrame->nPacketType);
@@ -147,7 +147,7 @@ void xm_talk_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, cha
 				{
 					st_stream_data stmdata;
 					stmdata.streamtype = AUDIO_STREAM_DATA;
-					stmdata.pdate= pDataBuf;
+					stmdata.pdata= pDataBuf;
 					stmdata.datalen = dwBufSize;
 
 					printf("[%s]device %p, lTalkHandle %ld, chn %d\n"

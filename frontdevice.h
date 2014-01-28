@@ -124,7 +124,7 @@ struct device* alloc_device(unsigned int type);
 struct device *_alloc_device( const struct device_ops *ops);//放到ops里去
 struct device *add_device(struct device *dev);
 struct device *get_device(struct device *dev);
-struct device *get_device_by_address(struct device *dev, char* ip, unsigned int port);//老的接口没有提供增加设备的命令，就直接登陆了，所以要检查是否有同ip，port的设备了
+struct device *get_device_by_address(char* ip, unsigned int port);//老的接口没有提供增加设备的命令，就直接登陆了，所以要检查是否有同ip，port的设备了
 
 struct channel *alloc_channel(size_t size);
 struct channel* add_channel(struct device *dev, struct channel *newchn);
@@ -162,7 +162,7 @@ extern struct list devicelist;
 struct st_stream_data
 {
 	unsigned int streamtype;
-	char* pdate;
+	char* pdata;
 	int   datalen;
 	union 
 	{
