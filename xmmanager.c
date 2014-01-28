@@ -22,7 +22,7 @@ static int xm_close_audio_stream(struct device *dev, struct stCloseAudioStream_R
 static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct stGetConfig_Rsp *rsp);
 static int xm_set_config(struct device *dev);
 static int xm_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req *req, struct stOpenAlarmStream_Rsp *rsp);
-static int xm_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Req *rsp);
+static int xm_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Rsp *rsp);
 static int xm_ptz_control(struct device *, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp);
 
 static struct device_ops xm_ops[] = 
@@ -922,7 +922,7 @@ static int xm_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 
 	return SUCCESS;
 }
-static int  xm_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Req *rsp)
+static int  xm_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Rsp *rsp)
 {
 	printf("[%s]\n", __FUNCTION__);
 	

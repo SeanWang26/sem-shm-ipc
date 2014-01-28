@@ -314,7 +314,7 @@ static int FindClose(HANDLE handle)
 }
 
 //创建一个信号量，并指定初值
-inline int sem_create_jt(const char* Name,unsigned int Value)
+int sem_create_jt(const char* Name,unsigned int Value)
 {
 	LinuxDirectCall call;
 	call.SemReq.Head.Type = SEM_Type;
@@ -325,7 +325,7 @@ inline int sem_create_jt(const char* Name,unsigned int Value)
 }
 
 //打开一个信号量，并得到指向信号量的指针
-inline sem_t * sem_open_jt(const char* Name)
+sem_t * sem_open_jt(const char* Name)
 {
 	LinuxDirectCall call;
 	call.SemReq.Head.Type = SEM_Type;
@@ -341,7 +341,7 @@ inline sem_t * sem_open_jt(const char* Name)
 }
 
 //关闭一个具名信号量
-inline int sem_close_jt(sem_t * semPtr)
+int sem_close_jt(sem_t * semPtr)
 {
 	LinuxDirectCall call;
 	call.SemReq.Head.Type = SEM_Type;
@@ -352,7 +352,7 @@ inline int sem_close_jt(sem_t * semPtr)
 }
 
 //删除一个具名信号量 比如要close引用计数为0
-inline int  sem_unlink_jt(const char* Name)
+int  sem_unlink_jt(const char* Name)
 {
 	LinuxDirectCall call;
 	call.SemReq.Head.Type = SEM_Type;
@@ -363,7 +363,7 @@ inline int  sem_unlink_jt(const char* Name)
 }
 
 //得到一个具名信号量的当前值 返回值为-1表示错误
-inline int sem_getvalue_jt(sem_t * semPtr)
+int sem_getvalue_jt(sem_t * semPtr)
 {
 	LinuxDirectCall call;
 	call.SemReq.Head.Type = SEM_Type;
@@ -378,7 +378,7 @@ inline int sem_getvalue_jt(sem_t * semPtr)
 }
 
 //等到一个信号量为正数，并把当前信号量减一
-inline int sem_wait_jt(sem_t * semPtr)
+int sem_wait_jt(sem_t * semPtr)
 {
 	LinuxDirectCall call;
 	call.SemReq.Head.Type = SEM_Type;
@@ -390,7 +390,7 @@ inline int sem_wait_jt(sem_t * semPtr)
 
 
 //在当前的信号量的值上加一
-inline int sem_post_jt(sem_t * semPtr)
+int sem_post_jt(sem_t * semPtr)
 {
 	LinuxDirectCall call;
 	call.SemReq.Head.Type = SEM_Type;
@@ -402,7 +402,7 @@ inline int sem_post_jt(sem_t * semPtr)
 
 //共享内存操作
 //创建一个具名共享内存,返回一个设备号
-inline int shm_create_jt(const char* Name)
+int shm_create_jt(const char* Name)
 {
 	LinuxDirectCall call;
 	call.ShmReq.Head.Type = SHM_Type;
@@ -418,7 +418,7 @@ inline int shm_create_jt(const char* Name)
 }
 
 //打开一个具名共享内存，,返回一个设备号
-inline int shm_open_jt(const char* Name,unsigned int Size,char*& Ptr)
+int shm_open_jt(const char* Name,unsigned int Size,char*& Ptr)
 {
 	LinuxDirectCall call;
 	call.ShmReq.Head.Type = SHM_Type;
@@ -437,7 +437,7 @@ inline int shm_open_jt(const char* Name,unsigned int Size,char*& Ptr)
 }
 
 //查看一个具名共享内存的大小
-inline int shm_getsize(unsigned int fd)
+int shm_getsize(unsigned int fd)
 {
 
 
@@ -445,7 +445,7 @@ inline int shm_getsize(unsigned int fd)
 }
 
 //改变一个共享具名内存的大小
-inline int shm_trunc_jt(int Fd,unsigned int Size)
+int shm_trunc_jt(int Fd,unsigned int Size)
 {
  	LinuxDirectCall call;
 	call.ShmReq.Head.Type = SHM_Type;
@@ -456,7 +456,7 @@ inline int shm_trunc_jt(int Fd,unsigned int Size)
 }
 
 //关闭一个具名共享内存
-inline int shm_close_jt(int Fd)
+int shm_close_jt(int Fd)
 {
  	LinuxDirectCall call;
 	call.ShmReq.Head.Type = SHM_Type;
@@ -466,7 +466,7 @@ inline int shm_close_jt(int Fd)
 }
 
 //删除一个具名共享内存
-inline int shm_unlink_jt(int Fd)
+int shm_unlink_jt(int Fd)
 {
  	LinuxDirectCall call;
 	call.ShmReq.Head.Type = SHM_Type;
@@ -475,7 +475,7 @@ inline int shm_unlink_jt(int Fd)
 	return FindClose((HANDLE)&call);
 }
 
-inline int shm_release_jt(char* Ptr, unsigned int Size)
+int shm_release_jt(char* Ptr, unsigned int Size)
 {
   	LinuxDirectCall call;
 	call.ShmReq.Head.Type = SHM_Type;

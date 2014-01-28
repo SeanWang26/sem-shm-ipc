@@ -54,7 +54,7 @@ void* task_work2(void *cmd)
 	return 0;
 }
 
-int create_detached_thread(pthread_t *tid, void* (*func)(void *), void* arg)
+/*int create_detached_thread(pthread_t *tid, void* (*func)(void *), void* arg)
 {
 	int res = 0;
 	pthread_attr_t attr;
@@ -65,7 +65,7 @@ int create_detached_thread(pthread_t *tid, void* (*func)(void *), void* arg)
 
 	return res;
 }
-
+*/
 int post_task()
 {
 	pthread_t tid = 0;
