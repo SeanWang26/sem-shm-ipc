@@ -146,7 +146,9 @@ static int FindClose(HANDLE handle)
 				sem = sem_open((const char *)DCALL.SemReq.Name, 0);
 				if(SEM_FAILED == sem )
 				{
-					perror("SEM_OPEN 1");
+					perror("SEM_OPEN--------- 1");
+					perror((const char *)DCALL.SemReq.Name);
+					perror("SEM_OPENc 1");
 					return FALSE;
 				}
 
@@ -240,6 +242,7 @@ static int FindClose(HANDLE handle)
 			}
 			case SHM_OPEN:
 			{
+				
 				DCALL.ShmReq.Fd = shm_open((const char *)DCALL.ShmReq.Name, O_RDWR, 0777);
 				if (DCALL.ShmReq.Fd<0)
 				{

@@ -6,11 +6,15 @@
 #include "plugerror.h"
 #include "devicetype.h"
 
+#include "stdarg.h"
+
 #define OBJECT_TYPE_DEVICE	1
 #define OBJECT_TYPE_CHANNEL	2
 #define OBJECT_TYPE_INPUT	3
 #define OBJECT_TYPE_OUTPUT	4
 #define OBJECT_TYPE_STREAM	5
+
+int jtprintf(const char* fmt, ...);
 
 struct object
 {
@@ -119,6 +123,8 @@ struct device_debug
 };
 
 typedef int (*real_staream_callback)(stream* stm, const void *pFrame, unsigned int user);
+
+int initall();
 
 struct device* alloc_device(unsigned int type);
 struct device *_alloc_device( const struct device_ops *ops);//放到ops里去

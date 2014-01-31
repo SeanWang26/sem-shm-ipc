@@ -9,9 +9,21 @@
 #include "xmmanager.h"
 
 /* grab an object (i.e. increment its refcount) and return the object */
+int jtprintf(const char* fmt, ...)
+{
+	char buffer[4096];
+	va_list argptr;
+	int cnt;
+	va_start(argptr, fmt);
+	cnt = vsprintf(buffer, fmt, argptr);
+	va_end(argptr);
+
+	fprintf(stderr, "%s", buffer);
+	return(cnt);
+}
 
 //lock
-struct list devicelist;
+struct list devicelist = {&devicelist, &devicelist};
 
 struct object *grab_object( void *ptr )
 {
@@ -71,7 +83,7 @@ struct device *add_device(struct device *dev)
 {
 	if(dev==NULL) 
 	{
-		printf("[%s]dev==NULL\n", __FUNCTION__);
+		jtprintf("[%s]dev==NULL\n", __FUNCTION__);
 		return NULL;
 	}
 	
@@ -113,7 +125,7 @@ struct device *get_device_by_address(char* ip, unsigned int port)
 		{	
 			return device;
 		}
-	}	
+	}
 
 	return NULL;
 }
@@ -147,12 +159,12 @@ struct channel* add_channel(struct device *dev, struct channel *newchn)
 	{
 		if(chn->id == newchn->id)
 		{	
-			printf("[%s]find channel record %d\n", __FUNCTION__, chn->id);
+			jtprintf("[%s]find channel record %d\n", __FUNCTION__, chn->id);
 			assert(0);
 		}
 	}
 
-	printf("[%s]add new channel record %d\n", __FUNCTION__, chn->id);
+	jtprintf("[%s]add new channel record %d\n", __FUNCTION__, chn->id);
 
 	newchn->obj.parent = (object*)dev;
 	
@@ -178,7 +190,7 @@ struct channel* do_channel(struct list *channels, int chnid, operator_channel op
 		}
 	}
 
-	printf("[%s]no channel record %d\n", __FUNCTION__, chnid);
+	jtprintf("[%s]no channel record %d\n", __FUNCTION__, chnid);
 	return NULL;
 }
 int do_each_channel(struct list *channels, operator_channel ope, int optype, void* data)
@@ -208,19 +220,19 @@ struct channel* get_channel(struct list *channels, int chnid)
 	{
 		if(chn->id == chnid)
 		{	
-			printf("[%s]find channel record %d\n", __FUNCTION__, chnid);
+			jtprintf("[%s]find channel record %d\n", __FUNCTION__, chnid);
 			return chn;
 		}
 	}
 
-	printf("[%s]no channel record %d\n", __FUNCTION__, chnid);
+	jtprintf("[%s]no channel record %d\n", __FUNCTION__, chnid);
 	return NULL;
 }
 
 
 struct stream *alloc_stream(size_t size)
 {
-	printf("[%s]\n", __FUNCTION__);
+	jtprintf("[%s]\n", __FUNCTION__);
     struct stream *stm = (struct stream *)malloc(size);
     if (stm)
     {
@@ -249,13 +261,13 @@ struct stream* add_stream(struct channel* channel, struct stream *newstm)
 		if(newstm->id == stm->id)
 		{	
 			//copy info to old???
-			printf("[%s]find stream record %d\n", __FUNCTION__, stm->id);
+			jtprintf("[%s]find stream record %d\n", __FUNCTION__, stm->id);
 			assert(0);
 			return stm;
 		}
 	}
 
-	printf("[%s]add new stream record %d\n", __FUNCTION__, stm->id);
+	jtprintf("[%s]add new stream record %d\n", __FUNCTION__, stm->id);
 
 	newstm->obj.parent = (object*)channel;
 
@@ -273,10 +285,10 @@ struct stream* get_stream_by_dev(struct device *dev, struct stream* stm)
 		struct stream *stream;
 		LIST_FOR_EACH_ENTRY(stream, &chn->streams, struct stream, entry)
 		{
-			printf("[%s]find stream %p, stm %p\n", __FUNCTION__, stream, stm);
+			jtprintf("[%s]find stream %p, stm %p\n", __FUNCTION__, stream, stm);
 			if(stm==stream)
 			{
-				printf("[%s]find stream record, stm %p\n", __FUNCTION__, stm);
+				jtprintf("[%s]find stream record, stm %p\n", __FUNCTION__, stm);
 				return stm;
 			}
 		}
@@ -297,12 +309,12 @@ struct stream* get_stream(struct list *streams, struct stream* stm)
 	{
 		if(stm==stream)
 		{
-			printf("[%s]find stream record, stm %p\n", __FUNCTION__, stm);
+			jtprintf("[%s]find stream record, stm %p\n", __FUNCTION__, stm);
 			return stm;
 		}
 	}
 	
-	printf("[%s]no stream record, stm %p\n", __FUNCTION__, stm);
+	jtprintf("[%s]no stream record, stm %p\n", __FUNCTION__, stm);
 						
 	return NULL;
 }
@@ -320,12 +332,12 @@ struct stream* get_stream_by_id(struct list* streams, int stmid)
 	{
 		if(stm->id==stmid)
 		{
-			printf("[%s]find stream record, stmid %d\n", __FUNCTION__, stmid);
+			jtprintf("[%s]find stream record, stmid %d\n", __FUNCTION__, stmid);
 			return stm;
 		}
 	}
 	
-	printf("[%s]no stream record, stmid %d\n", __FUNCTION__, stmid);
+	jtprintf("[%s]no stream record, stmid %d\n", __FUNCTION__, stmid);
 						
 	return NULL;
 }

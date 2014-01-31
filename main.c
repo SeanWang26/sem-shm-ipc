@@ -10,8 +10,11 @@
 #include "vsem.h"
 
 #include "commnvr.h"
+
 #define PlugVerion "0.0"
 char* semname = "wwww000000000000000000000";
+
+int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* Password);
 
 void* task_work(void *cmd)
 {
@@ -39,10 +42,14 @@ int semid3 = -1;
 
 void* task_work2(void *cmd)
 {
+	getxmvefeo("192.168.1.10", 34567, "admin", "");
+
+
+
 	printf("%s\n", (char*)cmd);
 	int cnt = 0 ;
 	while(1)
-	{	
+	{	sleep(11111);
 		wait_vsem(semid2);
 		
 		printf("semid2 get ack %d\n", ++cnt);
@@ -86,7 +93,7 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 		printf("xm_alloc_device failed\n");
 	}
 	
-	dev->ops->init(dev);
+	//dev->ops->init(dev);
 
 	dev->ops->init(dev);
 	{
@@ -187,17 +194,26 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 
 int main(int argc, char** argv)
 {
-	printf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
+	jtprintf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
+	perror("frontplug\n");
 
-	comm_nvr_init();	
-	/*device *dev = (device *)xm_alloc_device();
-	if(dev==NULL)
-	{
-		printf("xm_alloc_device failed\n");
-	}
+	pthread_t tid;
+	//create_detached_thread(&tid, task_work2, NULL);
+
+	//get_cmd((void*)"zh3401");
+
+	comm_nvr_init(34,1);
+
+	//return 0;
+	//device *dev = (device *)xm_alloc_device();
+	//if(dev==NULL)
+	//{
+	//	printf("xm_alloc_device failed\n");
+	//}
 	
-	dev->ops->init(dev);
-	{
+	//dev->ops->init(dev);
+	//create_detached_thread(&tid, task_work2, NULL);
+	/*{
 		stLogin_Req req = {"192.168.1.238", 34567, "user", "user"};
 		stLogin_Rsp rsp;
 		if(dev->ops->login(dev, &req, &rsp))
@@ -218,7 +234,7 @@ int main(int argc, char** argv)
 
 	}*/
 
-//	getxmvefeo("192.168.1.71", 34567, "user", "user");
+	//getxmvefeo("192.168.1.10", 34567, "admin", "");
 	/*getxmvefeo("192.168.1.78", 34567, "admin", "");
 	getxmvefeo("192.168.1.76", 34567, "user", "user");
 	getxmvefeo("192.168.1.10", 34567, "admin", "");
@@ -234,7 +250,7 @@ int main(int argc, char** argv)
 */
 
 	while(1)
-		sleep(1111);
+		sleep(11111);
 
 	{
 		stLogout_Req req;

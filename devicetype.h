@@ -29,7 +29,7 @@
 #define UNKNOWN_FRAME                                        0
 #define I_FRAME                                              1
 #define B_FRAME                                              2
-#define P_FRAME                                              2
+#define P_FRAME                                              3
 
 #define AUDIO_G711                                        1
 #define AUDIO_G711A                                       10
