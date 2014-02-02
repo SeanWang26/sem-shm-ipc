@@ -10,7 +10,7 @@
 #include "vsem.h"
 
 #include "commnvr.h"
-
+#include "showstruct.h"
 #define PlugVerion "0.0"
 char* semname = "wwww000000000000000000000";
 
@@ -71,12 +71,11 @@ void* task_work2(void *cmd)
 	pthread_attr_destroy(&attr);
 
 	return res;
-}
-*/
-int post_task()
+}*/
+void post_task()
 {
-	pthread_t tid = 0;
-	return	create_detached_thread(&tid, task_work2, (void*)"printf");
+	//pthread_t tid = 0;
+//	return	create_detached_thread(&tid, task_work2, (void*)"printf");
 }
 
 int _real_staream_callback(stream* stm, const void *pFrame, unsigned int user)
@@ -194,6 +193,7 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 
 int main(int argc, char** argv)
 {
+showstruct();
 	jtprintf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
 	perror("frontplug\n");
 

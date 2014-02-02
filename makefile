@@ -5,10 +5,10 @@ CCC = g++ -ggdb3
 all : frontplug.out frontclient.out xmtest.out
 
 frontplug.out:main.c  shm.c sem.c vsem.c frontdevice.c xmmanager.c commnvr.h commnvr.cpp
-	$(CCC) -m32 -g -Wall -o zhamponxm_SDK.exe commnvr.cpp main.c posixsem.cpp shm.c sem.c vsem.c frontdevice.c xmmanager.c ./libxmnetsdk.so -lpthread -lrt
+	$(CCC) -m32 -g -Wall -o zhamponxm_SDK.exe commnvr.cpp main.c posixsem.cpp shm.c sem.c vsem.c frontdevice.c xmmanager.c showstruct.cpp ./libxmnetsdk.so -lpthread -lrt
 
-frontclient.out:clientmain.c shm.c shm.h sem.c sem.h vsem.c
-	$(CC) -m32 -Wall -o frontclient.out clientmain.c shm.c sem.c vsem.c -lpthread -lrt
+frontclient.out:clientmain.cpp shm.c shm.h sem.c sem.h vsem.c
+	$(CCC)  -Wall -o frontclient.out showstruct.cpp clientmain.cpp shm.c sem.c vsem.c  -lpthread -lrt
 
 xmtest.out:test.cpp
 	g++ -m32 -o xmtest.out test.cpp ./libxmnetsdk.so
@@ -18,4 +18,4 @@ xmtest.out:test.cpp
 
 
 clean:
-	rm -f *.out *.o 
+	rm -f *.out *.o *.exe 

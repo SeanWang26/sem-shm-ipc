@@ -3,7 +3,7 @@
 #include "shm.h"
 #include "sem.h"
 #include "vsem.h"
-
+#include "showstruct.h"
 #define PlugClientVerion "0.0"
 char* semname = "wwww000000000000000000000";
 int semid2 = -1;
@@ -12,8 +12,9 @@ int semid3 = -1;
 int main(int argc, char** argv)
 {
 	printf("frontclient, build time %s, Version %s\n", __TIME__ , PlugClientVerion);
-
+	showstruct();
 	semid2  = open_or_create_vsem("xxxxxxxxdddd0");
+
 	//close_vsem(semid2);
 
 
