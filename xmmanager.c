@@ -86,8 +86,7 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 {
 	//lock
 	struct xmstream* stream = (struct xmstream*)dwUser;
-	jtprintf("xm get frame user %p, type %d, size %u\n", stream, pFrame->nPacketType, pFrame->dwPacketSize);
-
+	//jtprintf("xm get frame user %p, type %d, size %u\n", stream, pFrame->nPacketType, pFrame->dwPacketSize);
 
 	/*typedef struct
 	{
@@ -111,10 +110,13 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 		unsigned int	   Reserved[6]; 		   //±£Áô
 	} PACKET_INFO_EX;*/
 
+	if(pFrame->nPacketType == AUDIO_PACKET || pFrame->nPacketType == FILE_HEAD)
+		return 1;
+
 	st_stream_data stmdata;
 	stmdata.streamtype = VIDEO_STREAM_DATA;
-	stmdata.pdata= pFrame->pPacketBuffer;
-	stmdata.datalen = pFrame->dwPacketSize;
+	stmdata.pdata= pFrame->pPacketBuffer+8;
+	stmdata.datalen = pFrame->dwPacketSize-8;
 	stmdata.stream_info.video_stream_info.encode = stream->currentencode;
 	stmdata.stream_info.video_stream_info.frametype = xm_pack_type_convert((enum MEDIA_PACK_TYPE)pFrame->nPacketType);
 	stmdata.stream_info.video_stream_info.width = pFrame->dwPacketSize;
@@ -127,7 +129,7 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 	stmdata.hour = pFrame->nHour;
 	stmdata.minute = pFrame->nMinute;
 	stmdata.second = pFrame->nSecond;
-	
+
 	stream->stm.callback(&stmdata, stream->stm.userdata);
 
 	// it must return TRUE if decode successfully,or the SDK will consider the decode is failed

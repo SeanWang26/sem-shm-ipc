@@ -193,7 +193,7 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 
 int main(int argc, char** argv)
 {
-showstruct();
+	//showstruct();
 	jtprintf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
 	perror("frontplug\n");
 

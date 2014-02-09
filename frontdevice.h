@@ -149,6 +149,9 @@ struct stream* get_stream_by_id(struct list *streams, int stmid);
 struct stream* get_stream(struct list *streams, struct stream* stm);
 struct stream* get_stream_by_dev(struct device *dev, struct stream* stm);
 
+typedef int (*operator_stream)(struct stream *stm, void* data);
+struct stream* get_special_stream(struct list *streams, operator_stream ope, void* data);
+
 extern struct list devicelist;
 
 #define FIND_DEVICE_BEGIN(ctype,opstype)    struct device* device; 												\

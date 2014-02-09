@@ -23,6 +23,8 @@ int  NetDataCallBack( long lRealHandle, long dwDataType, unsigned char *pBuffer,
 }
 int  RealDataCallBack_V2(long lRealHandle, const PACKET_INFO_EX *pFrame, unsigned int dwUser)
 {
+
+	
 	/*int		nPacketType;				// 包类型,见MEDIA_PACK_TYPE
 	char*	pPacketBuffer;				// 缓存区地址
 	unsigned int	dwPacketSize;				// 包的大小
@@ -135,7 +137,7 @@ int  main(void)
 	H264_DVR_DEVICEINFO OutDev;	
 	memset(&OutDev,0,sizeof(OutDev));
 	int nError = 0;			
-	g_LoginID = H264_DVR_Login((char*)"192.168.1.72", 34567,(char*)"user",(char*)"user",(LPH264_DVR_DEVICEINFO)(&OutDev),&nError);		
+	g_LoginID = H264_DVR_Login((char*)"192.168.1.10", 34567,(char*)"user",(char*)"user",(LPH264_DVR_DEVICEINFO)(&OutDev),&nError);		
 #endif
 
  	if(g_LoginID>0)
@@ -165,7 +167,7 @@ int  main(void)
 #endif
 		//实时监视
 
-//#define RealPlay
+#define RealPlay
 #ifdef  RealPlay
 		H264_DVR_CLIENTINFO playstru;
 

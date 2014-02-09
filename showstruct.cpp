@@ -12,7 +12,7 @@
 		if(before##after) \
 		{ \
 			type st; \
-			printf("%p|%2d   sizeof(%20s) %3d_____________________\n",&#before,before##after, #before, sizeof(st.before)); \
+			printf("|%2d   sizeof(%20s) %3d_____________________\n",before##after, #before, sizeof(st.before)); \
 				break;  \
 		} \
 		else \

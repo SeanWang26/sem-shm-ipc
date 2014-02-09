@@ -297,6 +297,26 @@ struct stream* get_stream_by_dev(struct device *dev, struct stream* stm)
 	return NULL;
 }
 
+struct stream* get_special_stream(struct list *streams, operator_stream ope, void* data)
+{
+	struct stream *stm = NULL;
+
+	if(streams==NULL)
+	{
+		return NULL;
+	}
+
+	LIST_FOR_EACH_ENTRY(stm, streams, struct stream, entry)
+	{
+		if(ope(stm, data)!=0)
+			return stm;
+	}
+	
+	jtprintf("[%s]no stream record, data %p\n", __FUNCTION__, data);
+						
+	return NULL;
+}
+
 struct stream* get_stream(struct list *streams, struct stream* stm)
 {
 	struct stream *stream = NULL;

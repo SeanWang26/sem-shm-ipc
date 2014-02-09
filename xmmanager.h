@@ -4,13 +4,11 @@
 #include "frontdevice.h"
 #include "netsdk.h"
 
-
 struct xmdevice
 {
 	struct device 	dev;
 	long 			loginid;
-	long			voicehandle;//¶Ô½²¾ä±ú
-	long            audiohandle;//              ÒôÆµÐÅÏ¢;
+	long			voicehandle;//				¶Ô½²¾ä±ú
 	H264_DVR_DEVICEINFO info;
 };
 
