@@ -34,5 +34,8 @@
 #define AUDIO_G711                                        1
 #define AUDIO_G711A                                       10
 
+enum {JPTZ_UP=0, JPTZ_RIGHT_UP, JPTZ_RIGHT, JPTZ_RIGHT_DOWN, 
+	  JPTZ_DOWN, JPTZ_LEFT_DOWN, JPTZ_LEFT, JPTZ_LEFT_UP, 
+	  JPTZ_STOP};
 
 #endif

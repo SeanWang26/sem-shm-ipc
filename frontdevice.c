@@ -8,19 +8,9 @@
 
 #include "xmmanager.h"
 
-/* grab an object (i.e. increment its refcount) and return the object */
-int jtprintf(const char* fmt, ...)
-{
-	char buffer[4096];
-	va_list argptr;
-	int cnt;
-	va_start(argptr, fmt);
-	cnt = vsprintf(buffer, fmt, argptr);
-	va_end(argptr);
+#include "jtprintf.h"
 
-	fprintf(stderr, "%s", buffer);
-	return(cnt);
-}
+/* grab an object (i.e. increment its refcount) and return the object */
 
 //lock
 struct list devicelist = {&devicelist, &devicelist};

@@ -6,15 +6,11 @@
 #include "plugerror.h"
 #include "devicetype.h"
 
-#include "stdarg.h"
-
 #define OBJECT_TYPE_DEVICE	1
 #define OBJECT_TYPE_CHANNEL	2
 #define OBJECT_TYPE_INPUT	3
 #define OBJECT_TYPE_OUTPUT	4
 #define OBJECT_TYPE_STREAM	5
-
-int jtprintf(const char* fmt, ...);
 
 struct object
 {

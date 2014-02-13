@@ -8,6 +8,8 @@
 #include "shm.h"
 #include "sem.h"
 #include "vsem.h"
+#include "create_detached_thread.h"
+#include "jtprintf.h"
 
 #include "commnvr.h"
 #include "showstruct.h"
@@ -42,7 +44,7 @@ int semid3 = -1;
 
 void* task_work2(void *cmd)
 {
-	getxmvefeo("192.168.1.10", 34567, "admin", "");
+	getxmvefeo("192.168.1.74", 34567, "admin", "");
 
 
 
@@ -120,6 +122,7 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 		if(dev->ops->login(dev, &req, &rsp))
 		{
 			printf("login failed\n");
+			exit(0);
 		}
 	}
 
@@ -195,10 +198,10 @@ int main(int argc, char** argv)
 {
 	//showstruct();
 	jtprintf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
-	perror("frontplug\n");
 
-	pthread_t tid;
+	//pthread_t tid;
 	//create_detached_thread(&tid, task_work2, NULL);
+	//getxmvefeo("192.168.1.22", 34567, "admin", "");
 
 	//get_cmd((void*)"zh3401");
 

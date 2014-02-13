@@ -12,7 +12,7 @@
 		if(before##after) \
 		{ \
 			type st; \
-			printf("|%2d   sizeof(%20s) %3d_____________________\n",before##after, #before, sizeof(st.before)); \
+			printf("|%2d   sizeof(%20s) %3zu_____________________\n", before##after, #before, sizeof(st.before)); \
 				break;  \
 		} \
 		else \
@@ -21,7 +21,7 @@
 
 int showstruct()
 {
-	printf("sizeof()%d, %d\n", sizeof(struct stInterProcessCommandRequest),sizeof(struct stInterProcessCommandAck));
+	printf("sizeof(struct stInterProcessCommandRequest)=%zu, sizeof(struct stInterProcessCommandAck)=%zu\n", sizeof(struct stInterProcessCommandRequest),sizeof(struct stInterProcessCommandAck));
 	printf("___________________________________________________\n");
 
 	culaoffset(struct stInterProcessCommandRequest,sdkType,type)

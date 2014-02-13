@@ -1,4 +1,3 @@
-#include "posixsem.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +7,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <string.h>
+
+#include "posixsem.h"
 
 typedef enum
 {
