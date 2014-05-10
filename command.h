@@ -1,23 +1,28 @@
 #ifndef COMMUNICATION_WITH_NVR_H
 #define COMMUNICATION_WITH_NVR_H
 
-const int SUCCESS = 0;				//成功
-const int UNKNOWN_ERROR = -1;		//未知错误
-const int ABNORMAL_STATUS = -2;		//exe信令处理超时异常
-const int THREAD_EXCESS = -3;		//线程超量
+#include "devicetype.h"
 
-const int ABNORMAL_RSP=0;
+#define  SUCCESS                  0				//成功
+#define  UNKNOWN_ERROR   -1		//未知错误
+#define  ABNORMAL_STATUS   -2	//exe信令处理超时异常
+#define  THREAD_EXCESS   -3		//线程超量
 
-const int STARTUP_REQ=					0;
-const int LOGIN_REQ=					1;
-const int LOGOUT_REQ=					2; 
-const int GET_ENCODE_REQ=				3;
-const int OPEN_VIDEO_STREAM_REQ =		4;
-const int CLOSE_VIDEO_STREAM_REQ =		5;
-const int OPEN_AUDIO_STREAM_REQ =		6;
-const int CLOSE_AUDIO_STREAM_REQ =		7;
-const int OPEN_ALARM_REQ =		8;
-const int CLOSE_ALARM_REQ =		9;
+#define  ABNORMAL_RSP  0
+
+#define  STARTUP_REQ 					0
+#define  LOGIN_REQ                      1
+#define  LOGOUT_REQ 					2 
+#define  GET_ENCODE_REQ 				3
+#define  OPEN_VIDEO_STREAM_REQ  		4
+#define  CLOSE_VIDEO_STREAM_REQ  		5
+#define  OPEN_AUDIO_STREAM_REQ  		6
+#define  CLOSE_AUDIO_STREAM_REQ  		7
+#define  OPEN_ALARM_REQ                 8
+#define  CLOSE_ALARM_REQ                9
+
+//获取配置的子命令
+#define GET_ENCODE_CONFIG               1//获取编码配置
 
 //#pragma pack(4)
 struct stHead
@@ -35,6 +40,7 @@ struct stLogin_Req
 	unsigned int			Port;
 	char					User[32];
 	char					Password[32];
+	void*					EventCallback;
 };
 struct stLogin_Rsp
 {
@@ -67,13 +73,32 @@ struct stGetConfig_Rsp
 	char*					Config;
 };
 
+//设置配置信息
+struct stSetConfig_Req
+{
+	long long				DeviceHandle;
+	unsigned int			Type;
+	int	      		        Channel;
+	int                     Codec;
+	unsigned int			Size;
+	char*					Config;
+};
+struct stSetConfig_Rsp
+{
+	long long				DeviceHandle;
+	unsigned int			Type;
+	int	      		        Channel;
+	int                     Codec;
+};
+
 //打开视频流
 struct stOpenVideoStream_Req
 {
 	long long               DeviceHandle;
 	int						Channel;
 	int                     Codec;
-	void*                   Callback;
+	jt_stream_callback      Callback;
+	jt_stream_callback      Callback2;
 	void*                   UserData;
 };
 struct stOpenVideoStream_Rsp
@@ -126,7 +151,7 @@ struct stCloseAudioStream_Rsp
 struct stOpenAlarmStream_Req
 {
 	long long				DeviceHandle;
-	void*                   Callback;
+	jt_stream_callback      Callback;
 	void*                   UserData;	
 };
 struct stOpenAlarmStream_Rsp
@@ -200,10 +225,9 @@ struct stSetTime_Rsp
 enum { PTZ_MOVE=0, PTZ_STOP, PTZ_TOUR_START, PTZ_TOUR_STOP, SET_DEFAULT_POS, GOTO_PRESET, SET_PRESET, CLEAR_PRESET, SET_TOUR_LIST, AUTO_FOUS};
 
 //云台方向
-typedef enum {PTZ_LEFT,PTZ_LEFT_UP,PTZ_UP,PTZ_UP_RIGHT,PTZ_RIGHT,PTZ_DOWN_RIGHT,PTZ_DOWN,PTZ_DOWN_LEFT,PTZ_ABSOLUTE_POS,PTZ_STOP_MOVE,\
-PTZ_RESET, PTZ_PUSH_FAR, PTZ_PULL_NEAR,PTZ_IRIS_SUB,PTZ_IRIS_ADD,PTZ_FOCUS_FAR,PTZ_FOCUS_NEAR}PTZ_DIRECTION;
-
-
+/*typedef enum {PTZ_LEFT,PTZ_LEFT_UP,PTZ_UP,PTZ_UP_RIGHT,PTZ_RIGHT,PTZ_DOWN_RIGHT,PTZ_DOWN,PTZ_DOWN_LEFT,PTZ_ABSOLUTE_POS,PTZ_STOP_MOVE,\
+	PTZ_RESET, PTZ_PUSH_FAR, PTZ_PULL_NEAR,PTZ_IRIS_SUB,PTZ_IRIS_ADD,PTZ_FOCUS_FAR,PTZ_FOCUS_NEAR}PTZ_DIRECTION;
+*/
 //PTZ控制
 struct stPTZControl_Req
 {

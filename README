@@ -2,6 +2,7 @@
 
 this is a ipc use share memory and sem
 
+定义:一个插件里,同一个ip和端口的设备只能有一个?????
 
 设置断线通知
 
@@ -11,6 +12,8 @@ this is a ipc use share memory and sem
 XM的不开视屏也能开音频
 xm云台，需通道打开
 
+xm的音频是对应到设备的，而不是对应到通道
+dh的音频则是对应到通道的，不是每个具体的流
 
 子链接断线的概念
 

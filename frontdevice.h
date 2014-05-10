@@ -1,16 +1,38 @@
 #ifndef FRONTDEVICE_H
 #define FRONTDEVICE_H
 
+#ifdef WIN32 //windows platform
+
+#ifdef FRONT_USER_MODULE_EXPORTS
+#define FRONT_API __declspec(dllexport)
+#else
+#define FRONT_API __declspec(dllimport)
+#endif
+
+#ifndef CALL_TYPE
+#define CALL_TYPE	__stdcall  //__cdecl
+#endif
+
+#else //linux platform
+
+#ifndef FRONT_API
+#define FRONT_API
+#endif
+#ifndef CALL_TYPE
+#define CALL_TYPE
+#endif
+
+#endif
+
 #include "command.h"
 #include "list.h"
 #include "plugerror.h"
 #include "devicetype.h"
 
-#define OBJECT_TYPE_DEVICE	1
-#define OBJECT_TYPE_CHANNEL	2
-#define OBJECT_TYPE_INPUT	3
-#define OBJECT_TYPE_OUTPUT	4
-#define OBJECT_TYPE_STREAM	5
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 struct object
 {
@@ -21,26 +43,18 @@ struct object
 };
 
 struct device_ops;
-struct st_stream_data;
-typedef int (*stream_callback)(struct st_stream_data* data, void* user);
 
-struct encode_info
+struct audio_info 
 {
-	int enable;
 	int encodetype;
-	int fps;
-	int width;
-	int height;
-	int quality;
-	int bitrate;
-	int bitratectl;
-	int gop;
+	int sample;
 };
 
 struct channel_encode_info
 {	
 	struct encode_info mainencode;
 	struct encode_info sub1encode;
+	struct audio_info  audioencode;
 };
 
 #define MAX_CHANNEL_ENCODE_INFO 32
@@ -52,7 +66,7 @@ struct dev_encode_info
 
 struct device
 {
-	object                    obj;
+	struct object             obj;
 	const struct device_ops*  ops;
 	int                       dev_type;
 	char                      ip[32];
@@ -66,10 +80,11 @@ struct device
 	struct list               inputs;
 	struct list               outputs;
 
-	stream_callback           alarmcallback;//报警的回调
+	jt_stream_callback        alarmcallback;//报警的回调
 	void*                     alarmuserdata;//报警的用户数据	
 
 	struct dev_encode_info    encodeinfo;
+	int                       logined;
 };
 
 struct device_ops
@@ -85,62 +100,80 @@ struct device_ops
 	int  (*open_audio_stream)(struct device *, struct stOpenAudioStream_Req *req, struct stOpenAudioStream_Rsp *rsp);
 	int  (*close_audio_stream)(struct device *, struct stCloseAudioStream_Req *req, struct stCloseAudioStream_Rsp *rsp);
 	int  (*get_config)(struct device *, struct stGetConfig_Req *req, struct stGetConfig_Rsp *rsp);
-	int  (*set_config)(struct device *);
+	int  (*set_config)(struct device *, struct stSetConfig_Req *req, struct stSetConfig_Rsp *rsp);
 	int  (*open_alarm_stream)(struct device *, struct stOpenAlarmStream_Req *req, struct stOpenAlarmStream_Rsp *rsp);
 	int  (*close_alarm_stream)(struct device *, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Rsp *rsp);
 	int  (*ptz_control)(struct device *, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp);
+	int  (*set_system_time)(struct device *, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
 };
 
 struct channel
 {
-	object          obj;
+	struct object   obj;
 	int             id;
 	struct list     entry;
 	struct list     streams;
 
-	stream_callback      audiocallback;//音频的回调
-	void*                audiouserdata;//音频的用户数据
+	jt_stream_callback    audiocallback;//音频的回调
+	void*                 audiouserdata;//音频的用户数据
 };
 
 struct stream
 {
-	object               obj;
+	struct object        obj;
 	int                  id;
 	int                  pulling;
-	struct channel*      chn;
+	//struct channel*      chn;
 	struct list          entry;
-	stream_callback      callback;//视频的回调
+
+	char                 get_first_i;
+	unsigned long long   llbegintime;//开始时间, 100ns
+	jt_stream_callback   callback;//视频的回调
 	void*                userdata;//视频的用户数据
+
+	void*                decoder;  //
+	jt_stream_callback   callback2;//视频的回调
 };
 
 struct device_debug
 {
-	
+	int d;
 };
 
-typedef int (*real_staream_callback)(stream* stm, const void *pFrame, unsigned int user);
+typedef int (*real_staream_callback)(struct stream* stm, const void *pFrame, unsigned int user);
 
-int initall();
+int gloal_init();
+
+int share_lock_devicelist();
+int unique_lock_devicelist();
+int unlock_devicelist();
 
 struct device* alloc_device(unsigned int type);
 struct device *_alloc_device( const struct device_ops *ops);//放到ops里去
 struct device *add_device(struct device *dev);
+int device_init(struct device *dev);//
+struct device *remove_device(struct device *dev);
+int free_device(struct device * device);
+
 struct device *get_device(struct device *dev);
 struct device *get_device_by_address(char* ip, unsigned int port);//老的接口没有提供增加设备的命令，就直接登陆了，所以要检查是否有同ip，port的设备了
+struct device *get_device_by_stream(stream* stm);
 
 struct channel *alloc_channel(size_t size);
 struct channel* add_channel(struct device *dev, struct channel *newchn);
+int channel_init(struct channel *chn);
 struct channel* get_channel(struct list *channels, int chnid);
 
-#define START_AUDIO 1
-#define STOP_AUDIO  2
-#define CHCHK_AUDIO_CHANNEL 3
+#define START_AUDIO         1
+#define STOP_AUDIO          2
+#define CHECK_AUDIO_CHANNEL 3
 typedef int (*operator_channel)(struct channel *chn, int optype, void* data);
 struct channel* do_channel(struct list *channels, int chnid, operator_channel ope, int optype, void* data);
 int do_each_channel(struct list *channels, operator_channel ope, int optype, void* data);
 
 struct stream *alloc_stream(size_t size);
 struct stream* add_stream(struct channel* channel, struct stream *newstm);
+int stream_init(struct stream *stm);
 struct stream* get_stream_by_id(struct list *streams, int stmid);
 struct stream* get_stream(struct list *streams, struct stream* stm);
 struct stream* get_stream_by_dev(struct device *dev, struct stream* stm);
@@ -164,44 +197,8 @@ extern struct list devicelist;
 							}
 
 
-struct st_stream_data
-{
-	unsigned int streamtype;
-	char* pdata;
-	int   datalen;
-	union 
-	{
-		struct
-		{
-			unsigned int encode;
-			unsigned int frametype;
-			unsigned int width;
-			unsigned int height;
-			float        fps;
-			unsigned int bitrate;
-		}video_stream_info;
-		struct
-		{
-			unsigned int  encode;
-			unsigned char channel;
-			int           samples;
-			unsigned char depth;
-			unsigned int  reserved;//bitrate,  bps
-		}audio_stream_info;
-		struct
-		{
-			int           reason;
-		}alarm_stream_info;
-	}stream_info;
-	int year;					// 时标:年		
-	int month; 					// 时标:月
-	int day;					// 时标:日
-	int hour;					// 时标:时
-	int minute;					// 时标:分
-	int second;					// 时标:秒
-
-	unsigned int reserved[3];
-};
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif

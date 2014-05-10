@@ -181,7 +181,7 @@ static int FindClose(HANDLE handle)
 					return FALSE;
 				}
 
-				while ((res = sem_wait((sem_t *)DCALL.SemReq.Ptr)) == -1 && errno == EINTR)
+				while ((res = sem_wait((sem_t *)DCALL.SemReq.Ptr)) == -1 && errno == EINTR)//改为有timeout的那个
 					continue;
 
 				if( 0 != res)
@@ -198,7 +198,7 @@ static int FindClose(HANDLE handle)
 				{
 					perror("SEM_UNLINK 3");
 					return FALSE;
-				}				
+				}
 				
 				break;
 			}

@@ -2,18 +2,18 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include "xmmanager.h"
 #include <string.h>
 
-#include "shm.h"
-#include "sem.h"
-#include "vsem.h"
-#include "create_detached_thread.h"
+//#include "create_detached_thread.h"
 #include "jtprintf.h"
 
 #include "commnvr.h"
 #include "showstruct.h"
+
+
 #define PlugVerion "0.0"
+
+/*
 char* semname = "wwww000000000000000000000";
 
 int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* Password);
@@ -63,17 +63,7 @@ void* task_work2(void *cmd)
 	return 0;
 }
 
-/*int create_detached_thread(pthread_t *tid, void* (*func)(void *), void* arg)
-{
-	int res = 0;
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	res = pthread_create(tid, &attr, func, arg);
-	pthread_attr_destroy(&attr);
 
-	return res;
-}*/
 void post_task()
 {
 	//pthread_t tid = 0;
@@ -135,15 +125,6 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 		}
 	}
 
-	{
-		/*struct stOpenVideoStream_Req req = {0,0,0,(void*)_real_staream_callback};
-		struct stOpenVideoStream_Rsp rsp;
-
-		if(dev->ops->open_video_stream(dev, &req, &rsp))
-		{
-			printf("open_video_stream failed\n");
-		}*/
-	}
 
 	while(1)
 	{
@@ -170,18 +151,6 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 
 	}
 
-
-
-	/*{
-		struct stOpenAudioStream_Req req = {0,0};
-		struct stOpenAudioStream_Rsp rsp;
-
-		if(dev->ops->open_audio_stream(dev, &req, &rsp))
-		{
-			printf("open_audio_stream failed\n");
-		}
-	}*/
-
 	
 	{
 		struct stOpenAlarmStream_Req req = {0};
@@ -193,101 +162,45 @@ int getxmvefeo(const char* Ip, unsigned int Port, const char* Name, const char* 
 	}
 
 }
-
+*/
 int main(int argc, char** argv)
 {
-	//showstruct();
-	jtprintf("frontplug, build time %s, Version %s\n", __TIME__ , PlugVerion);
+	jtprintf("frontplug, build time %s, Version %s, %s\n", __TIME__ , PlugVerion, argv[0]);
 
-	//pthread_t tid;
-	//create_detached_thread(&tid, task_work2, NULL);
-	//getxmvefeo("192.168.1.22", 34567, "admin", "");
-
-	//get_cmd((void*)"zh3401");
-
-	comm_nvr_init(34,1);
-
-	//return 0;
-	//device *dev = (device *)xm_alloc_device();
-	//if(dev==NULL)
-	//{
-	//	printf("xm_alloc_device failed\n");
-	//}
-	
-	//dev->ops->init(dev);
-	//create_detached_thread(&tid, task_work2, NULL);
-	/*{
-		stLogin_Req req = {"192.168.1.238", 34567, "user", "user"};
-		stLogin_Rsp rsp;
-		if(dev->ops->login(dev, &req, &rsp))
+	int exenamelen = strlen(argv[0]);
+	int exetype = 0;
+	for(int i=exenamelen; i>0; --i)
+	{
+		if('/'== argv[0][i])
 		{
-			printf("login failed\n");
+			if(!memcmp((void*)(&(argv[0][i])+1), "zhamponxm_SDK.exe", sizeof("zhamponxm_SDK.exe")))
+			{
+				exetype = 34;
+			}                                            
+			else if(!memcmp((void*)(&(argv[0][i])+1), "zhdahua_SDK.exe", sizeof("zhdahua_SDK.exe")))
+			{
+				exetype = 3;
+			}
+
+			jtprintf("it is %d\n", exetype);
 		}
 	}
 
-
+	if(0==exetype)
 	{
-		struct stOpenVideoStream_Req req = {0,0,0,0};
-		struct stOpenVideoStream_Rsp rsp;
-
-		if(dev->ops->open_video_stream(dev, &req, &rsp))
-		{
-			printf("logout failed\n");
-		}
-
-	}*/
-
-	//getxmvefeo("192.168.1.10", 34567, "admin", "");
-	/*getxmvefeo("192.168.1.78", 34567, "admin", "");
-	getxmvefeo("192.168.1.76", 34567, "user", "user");
-	getxmvefeo("192.168.1.10", 34567, "admin", "");
-	getxmvefeo("192.168.1.79", 34567, "admin", "");
-	getxmvefeo("192.168.1.238", 34567, "user", "user");
-
-	getxmvefeo("192.168.1.238", 34567, "user", "user");
-	getxmvefeo("192.168.1.78", 34567, "admin", "");
-	getxmvefeo("192.168.1.76", 34567, "user", "user");
-	getxmvefeo("192.168.1.10", 34567, "admin", "");
-	getxmvefeo("192.168.1.79", 34567, "admin", "");
-	getxmvefeo("192.168.1.238", 34567, "user", "user");
-*/
-
-	while(1)
-		sleep(11111);
-
-	{
-		stLogout_Req req;
-		stLogout_Rsp rsp;
-		//if(dev->ops->logout(dev, &req, &rsp))
-		{
-			printf("logout failed\n");
-		}
+		jtprintf("unknown front exe\n");
+		return -1;
 	}
 
-
-
-
-
-
-	return 0;
-
-	semid2  = open_or_create_vsem("xxxxxxxxdddd0");
-	semid3	= open_or_create_vsem("xxxxxxxxddddssss0");
-
-	//post_task();
-
-
-
-
-	while(1)
+	int exeindex = 1;
+	if(argc>1)
 	{
-		post_vsem(semid2);
-		
-		wait_vsem(semid3);
-		printf("semid3 get ack\n");
+		exeindex = atoi(argv[1]);
+		jtprintf("exeindex %d\n", exeindex);
 	}
 	
-	sleep(1000);
+	comm_nvr_init(exetype, exeindex);
+
 	return 0;
 }
 
