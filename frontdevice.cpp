@@ -130,11 +130,11 @@ struct device *_alloc_device( const struct device_ops *ops)
 
 struct device *alloc_device(unsigned int type)
 {
-	if(list_count(&devicelist)>1)
-	{
-		jtprintf("[%s]device count up to limit\n", __FUNCTION__);
-		return NULL;
-	}
+	//if(list_count(&devicelist)>1)
+	//{
+	//	jtprintf("[%s]device count up to limit\n", __FUNCTION__);
+	//	return NULL;
+	//}
 
 #if (defined(WIN32) || defined(WIN64))
 	if(DEVICE_DH == type
@@ -199,7 +199,8 @@ struct device *add_device(struct device *dev)
 	LIST_FOR_EACH_ENTRY(device, &devicelist, struct device, entry)
 	{
 		if(device == dev)
-		{	
+		{
+			jtprintf("[%s]dev==dev %p\n", __FUNCTION__, device);
 			assert(0);
 		}
 	}	
@@ -381,7 +382,7 @@ struct channel* get_channel(struct list *channels, int chnid)
 	{
 		if(chn->id == chnid)
 		{	
-			jtprintf("[%s]find channel record %d\n", __FUNCTION__, chnid);
+			jtprintf("[%s]find channel record %d, chn %p\n", __FUNCTION__, chnid, chn);
 			return chn;
 		}
 	}

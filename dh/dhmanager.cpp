@@ -207,8 +207,10 @@ static inline int dh_handle_alarm(dhdevice *device, char *pBuf, unsigned long dw
 	{
 		
 	}*/
-
-	//device->dev.alarmcallback(device->dev.alarmuserdata);
+	
+	//if(device->dev.alarmcallback)
+	//	device->dev.alarmcallback(device->dev.alarmuserdata);
+	
 	return 0;
 }
 
@@ -659,7 +661,7 @@ static int dh_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	jtprintf("[%s]before H264_DVR_RealPlay %ld, channel %d, nStream %d\n"
 			, __FUNCTION__, dhdev->loginid, req->Channel, req->Codec);
 
-	long handle = CLIENT_RealPlayEx(dhdev->loginid, req->Channel-1, NULL, RealPlayTypeConvert(req->Codec));	
+	long handle = CLIENT_RealPlayEx(dhdev->loginid, req->Channel, NULL, RealPlayTypeConvert(req->Codec));	
 	if(handle == 0)
 	{
 		jtprintf("[%s]start real stream wrong! m_iPlayhandle %ld, channel %d, nStream %d\n"

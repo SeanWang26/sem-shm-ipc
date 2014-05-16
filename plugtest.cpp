@@ -74,7 +74,9 @@ int stream_callback(int _callback_type, void* _data, void** _user)
 }
 
 void* handle= NULL;
-int devtype = DEVICE_DH;
+int devtype = DEVICE_XM;
+//int devtype = DEVICE_DH;
+
 
 void* func(void *)
 {
@@ -93,8 +95,7 @@ void* func(void *)
 		printf("jt_create_device %d ok, %p\n", devtype, handle);
 	}
 
-	
-	struct stLogin_Req req = {{"192.168.3.65"}, 37777, {"admin"}, {"admin"}, NULL};
+	struct stLogin_Req req = {{"192.168.0.170"}, 34567, {"admin"}, {""}, NULL};
 	struct stLogin_Rsp rsp;
 	ret = jt_login(handle, &req, &rsp);
 	if(ret)
@@ -109,7 +110,7 @@ void* func(void *)
 	while(1)
 	{
 		struct stOpenVideoStream_Req req2;
-		req2.Channel = 1;
+		req2.Channel = 0;
 		req2.Codec = 0;
 		req2.Callback = stream_callback;
 		req2.UserData = new int(1);
@@ -122,7 +123,7 @@ void* func(void *)
 		req3.UserData = new int(2);
 		jt_open_alarm_stream(handle, &req3, &rsp3);
 
-		sleep(5);
+		sleep(50);
 
 		//¹Ø±ÕÊÓÆµÁ÷
 		struct stCloseVideoStream_Req req4;

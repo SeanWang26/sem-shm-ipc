@@ -245,7 +245,10 @@ static inline int xm_handle_alarm(xmdevice *device, char *pBuf, unsigned long dw
 	alarm.streamtype = ALARM_STREAM_DATA;
 	alarm.stream_info.alarm_stream_info.reason = reason;
 	alarm.stream_info.alarm_stream_info.channelid = 0;
-	device->dev.alarmcallback(CALLBACK_TYPE_ALARM_STREAM, &alarm, &device->dev.alarmuserdata);
+	
+	if(device->dev.alarmcallback)
+		device->dev.alarmcallback(CALLBACK_TYPE_ALARM_STREAM, &alarm, &device->dev.alarmuserdata);
+
 	return 0;
 }
 
@@ -724,6 +727,16 @@ static int xm_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 		return INVALID_STREAM_NO;
 	}
 
+	if(stm->playhandle==0)
+	{
+		jtprintf("[%s]stm->playhandle==0, aready closed\n", __FUNCTION__);
+		stm->stm.pulling = 0;
+		stm->playhandle = 0L;
+		stm->stm.callback = NULL;
+		stm->stm.llbegintime = 0;
+		return SUCCESS;
+	}
+
 	if(H264_DVR_SetRealDataCallBack_V2(stm->playhandle, NULL, 0)==0)
 	{
 		jtprintf("[%s]set video callback failed!\n", __FUNCTION__);
@@ -756,6 +769,8 @@ static int xm_operator_channel(struct channel *chn, int type, void* data)
 {
 	if(STOP_AUDIO==type)//关闭音频
 	{
+		jtprintf("[%s]STOP_AUDIO \n", __FUNCTION__);
+		
 		if(chn->audiocallback)
 			chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM_CLOSEED, SUCCESS, &chn->audiouserdata);
 		
@@ -763,17 +778,21 @@ static int xm_operator_channel(struct channel *chn, int type, void* data)
 	}
 	else if(START_AUDIO==type)//打开音频
 	{
+		jtprintf("[%s]START_AUDIO \n", __FUNCTION__);
 		struct stOpenAudioStream_Req *req = (struct stOpenAudioStream_Req *)data;
 
+		void* tmp = chn->audiouserdata;
+
 		chn->audiocallback = (jt_stream_callback)req->Callback;
+		chn->audiouserdata = req->UserData;
 		
 		if(chn->audiocallback)
-			chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM_CLOSEED, SUCCESS, &chn->audiouserdata);
-
-		chn->audiouserdata = req->UserData;
+			chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM_OPENED, SUCCESS, &tmp);
 	}
 	else if(CHECK_AUDIO_CHANNEL==type)//
 	{
+		jtprintf("[%s]CHECK_AUDIO_CHANNEL \n", __FUNCTION__);
+		
 		//熊迈的音频是对应到设备的，这里要看看那些通道要了音频数据
 		if(chn->audiocallback && chn->audiouserdata)
 		{
@@ -809,14 +828,18 @@ static int xm_open_audio_stream(struct device *dev, struct stOpenAudioStream_Req
 	{
 		return INVALID_CHANNEL_NO;
 	}
-	
+
+	jtprintf("[%s]1 xmdev->voicehandle %ld\n", __FUNCTION__, xmdev->voicehandle);
 	if(xmdev->voicehandle == 0)
 	{
 		long voicehandle = H264_DVR_StartVoiceCom_MR(xmdev->loginid, xm_talk_data_callback, (long)dev);
 		if(voicehandle <= 0)
 		{
+			jtprintf("[%s]H264_DVR_StartVoiceCom_MR voicehandle %ld, failed\n", __FUNCTION__, voicehandle);
 			return OPEN_AUDIO_STREAM_FAILED;
 		}
+
+		jtprintf("[%s]H264_DVR_StartVoiceCom_MR voicehandle %ld, ok\n", __FUNCTION__, voicehandle);
 		xmdev->voicehandle = voicehandle;
 	}
 
@@ -917,6 +940,11 @@ static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 					return GET_CONFIG_FAILED;
 				}							
 			}
+			else
+			{
+				jtprintf("[%s]curtime(%d) - xmdev->dev.encodeinfo.last_get_time(%d) = %d, use old config\n"
+					, __FUNCTION__, curtime, xmdev->dev.encodeinfo.last_get_time, curtime-xmdev->dev.encodeinfo.last_get_time);			
+			}
 
 			struct encode_info* einfo = (struct encode_info*)malloc(sizeof(struct encode_info));
 			if(req->Codec==0)
@@ -964,13 +992,16 @@ static int xm_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 
 	if(H264_DVR_SetupAlarmChan(xmdev->loginid))
 	{
+		jtprintf("[%s]xmdev H264_DVR_SetupAlarmChan ok, alarmcallback %p\n", __FUNCTION__, dev->alarmcallback);
 		if(dev->alarmcallback)
-			dev->alarmcallback(CALLBACK_TYPE_ALARM_STREAM_OPENED, (void*)OPEN_AUDIO_STREAM_FAILED, &dev->alarmuserdata);
+			dev->alarmcallback(CALLBACK_TYPE_ALARM_STREAM_OPENED, (void*)SUCCESS, &dev->alarmuserdata);
 
-		dev->alarmcallback = (jt_stream_callback)req->Callback;
+		jtprintf("[%s]xmdev H264_DVR_SetupAlarmChan ok  22, alarmcallback %p\n"
+			, __FUNCTION__, dev->alarmcallback);
+
+		dev->alarmcallback = req->Callback;
 		dev->alarmuserdata = req->UserData;
 		rsp->DeviceHandle = (long long)(unsigned)xmdev;
-		jtprintf("[%s]xmdev H264_DVR_SetupAlarmChan ok\n", __FUNCTION__);
 	}
 	else
 	{		
@@ -1064,6 +1095,10 @@ static int xm_ptz_control(struct device * dev, struct stPTZControl_Req *req, str
 	switch(req->Action)
 	{
 		case JPTZ_STOP://停止
+		
+			jtprintf("[%s]ip %s, port %u, Channel %d, Action %u, Speed %d\n"
+			, __FUNCTION__, dev->ip, dev->port, req->Channel, req->Action, req->Speed);
+			
 			H264_DVR_PTZControl(xmdev->loginid, req->Channel, 0, 1, 0);
 		break;
 		case JPTZ_UP://8个方向

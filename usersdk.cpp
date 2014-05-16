@@ -63,12 +63,15 @@ int CALL_TYPE jt_login_ex(void* handle, int type, struct stLogin_Req *req, struc
 			dev = (struct device*)alloc_device(type);
 			if(dev && add_device(dev))
 			{
-				jtprintf("add_device %s, %d\n", req->Ip, req->Port);
+				jtprintf("[jt_login_ex]add_device %s, %d\n", req->Ip, req->Port);
 			}
 		}
+
+		handle = dev;
+		
 		unlock_devicelist();
 	}
-
+	
 	share_lock_devicelist();
 	struct device* dev = get_device((struct device*)handle); 
 	if(dev)
@@ -175,7 +178,6 @@ int CALL_TYPE jt_close_video_stream(void* handle, struct stCloseVideoStream_Req 
 }
 int CALL_TYPE jt_open_audio_stream(void* handle, struct stOpenAudioStream_Req *req, struct stOpenAudioStream_Rsp *rsp)
 {
-	//grab_devcie?
 	share_lock_devicelist();
 	struct device *dev = get_device((struct device *)handle);
 	if(dev)
