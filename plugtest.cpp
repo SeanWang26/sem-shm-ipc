@@ -8,15 +8,14 @@
 
 int stream_callback(int _callback_type, void* _data, void** _user)
 {
-
 	struct st_stream_data* data = (struct st_stream_data*)_data;
 	void* user = (void*)*_user;
 	
-	printf("stream_callback, data = %p, user %p\n", data, user);
+	//printf("stream_callback, data = %p, user %p\n", data, user);
 
 	if(CALLBACK_TYPE_VIDEO_STREAM==_callback_type)
 	{
-		printf("video stream %s\n", __TIME__);
+		//printf("video stream %s\n", __TIME__);
 	}
 	else if(CALLBACK_TYPE_AUDIO_STREAM==_callback_type)
 	{
@@ -95,7 +94,7 @@ void* func(void *)
 		printf("jt_create_device %d ok, %p\n", devtype, handle);
 	}
 
-	struct stLogin_Req req = {{"192.168.0.170"}, 34567, {"admin"}, {""}, NULL};
+	struct stLogin_Req req = {{"192.168.3.71"}, 34567, {"admin"}, {""}, NULL};
 	struct stLogin_Rsp rsp;
 	ret = jt_login(handle, &req, &rsp);
 	if(ret)
@@ -123,7 +122,16 @@ void* func(void *)
 		req3.UserData = new int(2);
 		jt_open_alarm_stream(handle, &req3, &rsp3);
 
-		sleep(50);
+		struct stOpenAudioStream_Req req5;
+		struct stOpenAudioStream_Rsp rsp5;
+		req5.DeviceHandle = (long long)handle;
+		req5.Callback = stream_callback;
+		req5.UserData = new int(2);
+		req5.Channel = 0;
+		//jt_open_audio_stream(handle, &req5, &rsp5);
+
+
+		sleep(500);
 
 		//¹Ø±ÕÊÓÆµÁ÷
 		struct stCloseVideoStream_Req req4;
@@ -147,7 +155,8 @@ int main(int argc, char** argv)
 	printf("time %s\n", __TIME__);
 
 	pthread_t tid; 
-	create_detached_thread(&tid, func, NULL);
+	//create_detached_thread(&tid, func, NULL);
+	func(NULL);
 
 	sleep(20000);
 	return 0;

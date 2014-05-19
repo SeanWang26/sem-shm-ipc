@@ -26,6 +26,9 @@ static int dh_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 static int dh_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Rsp *rsp);
 static int dh_ptz_control(struct device *, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp);
 static int dh_set_system_time(struct device *dev, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
+static int dh_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
+static int dh_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
+static int dh_send_talk_data(struct device *, char *data, unsigned len);
 
 static struct device_ops dh_ops = 
 {
@@ -44,7 +47,10 @@ static struct device_ops dh_ops =
 	dh_open_alarm_stream,
 	dh_close_alarm_stream,
 	dh_ptz_control,
-	dh_set_system_time
+	dh_set_system_time,
+	dh_start_talk,
+	dh_stop_talk,
+	dh_send_talk_data
 };
 
 //initstream
@@ -1181,3 +1187,19 @@ static int dh_set_system_time(struct device *dev, struct stSetTime_Req *req, str
 	
 	return -1;
 }
+int dh_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp)
+{
+
+	return NOT_IMPLEMENT;
+}
+int dh_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp)
+{
+
+	return NOT_IMPLEMENT;
+}
+int dh_send_talk_data(struct device *, char *data, unsigned len)
+{
+	
+	return NOT_IMPLEMENT;
+}
+

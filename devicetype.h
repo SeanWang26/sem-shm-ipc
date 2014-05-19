@@ -38,6 +38,9 @@
 #define VIDEO_ENCODE_HIK_H264                               0x0081
 #define VIDEO_ENCODE_DAHUA_H264                             0x0082
 
+#define VIDEO_ENCODE_UNKOWN                                 0xF000
+
+
 #define UNKNOWN_FRAME                                        0
 #define I_FRAME                                              1
 #define B_FRAME                                              2
@@ -73,7 +76,7 @@ struct encode_info
 	int height;
 	int quality;
 	int bitrate;
-	int bitratectl;
+	int bitratectl;//¿É±ä???
 	int gop;
 };
 
@@ -97,7 +100,8 @@ struct st_stream_data
 		{
 			unsigned int  encode;
 			unsigned char channel;
-			int           samples;
+			int           frequency;
+			int           bitrate;
 			unsigned char depth;
 			unsigned int  reserved;//bitrate,  bps
 		}audio_stream_info;

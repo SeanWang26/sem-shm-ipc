@@ -47,7 +47,10 @@ struct device_ops;
 struct audio_info 
 {
 	int encodetype;
-	int sample;
+	int frequency;
+	int bitrate;
+	int channel;
+	int depth;
 };
 
 struct channel_encode_info
@@ -105,6 +108,9 @@ struct device_ops
 	int  (*close_alarm_stream)(struct device *, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Rsp *rsp);
 	int  (*ptz_control)(struct device *, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp);
 	int  (*set_system_time)(struct device *, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
+	int  (*start_talk)(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
+	int  (*stop_talk)(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
+	int  (*send_talk_data)(struct device *, char *data, unsigned len);
 };
 
 struct channel
@@ -116,6 +122,8 @@ struct channel
 
 	jt_stream_callback    audiocallback;//音频的回调
 	void*                 audiouserdata;//音频的用户数据
+
+	int insendtalkdata;
 };
 
 struct stream
@@ -144,9 +152,9 @@ typedef int (*real_staream_callback)(struct stream* stm, const void *pFrame, uns
 
 int gloal_init();
 
-int share_lock_devicelist();
-int unique_lock_devicelist();
-int unlock_devicelist();
+int unique_lock_devicelist(const char *FunName);
+int share_lock_devicelist(const char* FunName);
+int unlock_devicelist(const char* FunName);
 
 struct device* alloc_device(unsigned int type);
 struct device *_alloc_device( const struct device_ops *ops);//放到ops里去
@@ -157,7 +165,8 @@ int free_device(struct device * device);
 
 struct device *get_device(struct device *dev);
 struct device *get_device_by_address(char* ip, unsigned int port);//老的接口没有提供增加设备的命令，就直接登陆了，所以要检查是否有同ip，port的设备了
-struct device *get_device_by_stream(stream* stm);
+struct device *get_device_by_channel(struct channel* chn);
+struct device *get_device_by_stream(struct stream* stm);
 
 struct channel *alloc_channel(size_t size);
 struct channel* add_channel(struct device *dev, struct channel *newchn);

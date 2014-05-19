@@ -3,10 +3,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <errno.h>
+#include "jtprintf.h"
+
 
 #include "posixsem.h"
 
@@ -18,6 +22,7 @@ typedef enum
     SEM_UNLINK,
     SEM_GETVALUE,
     SEM_WAIT,
+    SEM_WAIT_TIMEOUT,
     SEM_POST,
     SEM_UNKOWN
     
@@ -93,7 +98,7 @@ static int FindClose(HANDLE handle)
 
 	if(handle == (void*)0 || handle == (void*)-1)
 	{
-		printf("error handle=%p\n", handle);
+		jtprintf("[%s]error handle=%p\n", __FUNCTION__, handle);
 		return FALSE;
 	}
 	
@@ -105,13 +110,13 @@ static int FindClose(HANDLE handle)
 			{
 				if(DCALL.SemReq.Ptr == 0 || DCALL.SemReq.Ptr == -1)
 				{
-					printf("error SEM_GETVALUE semPtr=%lld\n", DCALL.SemReq.Ptr);
+					jtprintf("[%s]SEM_POST error, semPtr=%lld\n", __FUNCTION__, DCALL.SemReq.Ptr);
 					return FALSE;
 				}
 
 				if( 0 != sem_post((sem_t *)DCALL.SemReq.Ptr))//warning: cast to pointer from integer of different size
 				{
-					perror("FindClose 6");
+					jtprintf("[%s]SEM_POST error, %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 
@@ -122,14 +127,14 @@ static int FindClose(HANDLE handle)
 				sem_t* sem;
 				if(DCALL.SemReq.Name == NULL)
 				{
-					printf("error SEM_CREAT semName=0\n");
+					jtprintf("[%s]SEM_CREAT error, DCALL.SemReq.Name == NULL\n", __FUNCTION__);
 					return FALSE;
 				}
 
 				sem = sem_open((const char *)DCALL.SemReq.Name, O_CREAT, 0777, DCALL.SemReq.Value);
 				if(SEM_FAILED == sem )
 				{
-					perror("SEM_CREATE\n");
+					jtprintf("[%s]SEM_CREATE, error %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 				DCALL.SemReq.Ptr = (long long)sem;	//warning: cast from pointer to integer of different size
@@ -140,16 +145,14 @@ static int FindClose(HANDLE handle)
 				sem_t * sem;
 				if(DCALL.SemReq.Name == NULL)
 				{
-					printf("error SEM_OPEN semName=0\n");
+					jtprintf("[%s]SEM_OPEN error DCALL.SemReq.Name == NULL\n", __FUNCTION__);
 					return FALSE;
 				}
 				
 				sem = sem_open((const char *)DCALL.SemReq.Name, 0);
 				if(SEM_FAILED == sem )
 				{
-					perror("SEM_OPEN--------- 1");
-					perror((const char *)DCALL.SemReq.Name);
-					perror("SEM_OPENc 1");
+					jtprintf("[%s]SEM_OPEN error, %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 
@@ -160,13 +163,13 @@ static int FindClose(HANDLE handle)
 			{
 				if(DCALL.SemReq.Ptr == 0 || DCALL.SemReq.Ptr == -1)
 				{
-					printf("error SEM_CLOSE semPtr=%lld\n", DCALL.SemReq.Ptr);
+					jtprintf("[%s]SEM_CLOSE error, semPtr=%lld\n", __FUNCTION__, DCALL.SemReq.Ptr);
 					return FALSE;
 				}
 
 				if( 0 != sem_close((sem_t *)DCALL.SemReq.Ptr))
 				{
-					perror("SEM_CLOSE 2");
+					jtprintf("[%s]SEM_CLOSE error, %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 
@@ -177,16 +180,50 @@ static int FindClose(HANDLE handle)
 				int res=0;
 				if(DCALL.SemReq.Ptr == 0 || DCALL.SemReq.Ptr == -1)
 				{
-					printf("error SEM_WAIT semPtr=%lld\n", DCALL.SemReq.Ptr);
+					jtprintf("[%s]SEM_WAIT error, semPtr=%lld\n", __FUNCTION__, DCALL.SemReq.Ptr);
 					return FALSE;
 				}
 
-				while ((res = sem_wait((sem_t *)DCALL.SemReq.Ptr)) == -1 && errno == EINTR)//改为有timeout的那个
+				//int sem_timedwait((sem_t *)DCALL.SemReq.Ptr), const struct timespec *restrict abs_timeout);
+
+				while ((res = sem_wait((sem_t *)DCALL.SemReq.Ptr)) == -1 && errno == EINTR)//
 					continue;
 
 				if( 0 != res)
 				{
-					perror("SEM_WAIT 5");
+					jtprintf("[%s]SEM_WAIT error, %s\n", __FUNCTION__, strerror(errno));
+					return FALSE;
+				}
+
+				break;
+			}
+			case SEM_WAIT_TIMEOUT:
+			{
+				int res=0;
+				if(DCALL.SemReq.Ptr == 0 || DCALL.SemReq.Ptr == -1)
+				{
+					jtprintf("[%s]SEM_WAIT error, semPtr=%lld\n", __FUNCTION__, DCALL.SemReq.Ptr);
+					return FALSE;
+				}
+
+				struct timespec stTS;	
+				memset(&stTS,0,sizeof(struct timespec));
+				clock_gettime(CLOCK_REALTIME, &stTS);
+				stTS.tv_sec += DCALL.SemReq.Value;
+				while ((res = sem_timedwait((sem_t *)DCALL.SemReq.Ptr, &stTS)) == -1 && errno == EINTR)//改为有timeout的那个
+					continue;
+
+				if( 0 != res)
+				{
+					if(res == ETIMEDOUT)
+					{
+						jtprintf("[%s]SEM_WAIT timeout, %s\n", __FUNCTION__, strerror(errno));
+					}
+					else
+					{
+						jtprintf("[%s]SEM_WAIT error, %s\n", __FUNCTION__, strerror(errno));
+					}
+					
 					return FALSE;
 				}
 
@@ -196,7 +233,7 @@ static int FindClose(HANDLE handle)
 			{
 				if(0 != sem_unlink((const char *)DCALL.SemReq.Name))
 				{
-					perror("SEM_UNLINK 3");
+					jtprintf("[%s]SEM_UNLINK 3, error %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 				
@@ -206,12 +243,12 @@ static int FindClose(HANDLE handle)
 			{
 				if(DCALL.SemReq.Ptr == 0 || DCALL.SemReq.Ptr == -1)
 				{
-					printf("error SEM_GETVALUE semPtr=%lld\n", DCALL.SemReq.Ptr);
+					jtprintf("[%s]SEM_GETVALUE error, semPtr=%lld\n", __FUNCTION__, DCALL.SemReq.Ptr);
 					return FALSE;
 				}
 				if( 0 != sem_getvalue((sem_t *)DCALL.SemReq.Ptr, &DCALL.SemReq.Value))
 				{
-					perror("SEM_GETVALUE 4");
+					jtprintf("[%s]SEM_GETVALUE error, %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 
@@ -219,7 +256,7 @@ static int FindClose(HANDLE handle)
 			}
 			case SEM_UNKOWN:
 			default:
-				printf("FindClose SEM_UNKOWN\n");
+				jtprintf("[%s]FindClose SEM_UNKOWN\n", __FUNCTION__);
 				return FALSE;
 		}
 
@@ -235,7 +272,7 @@ static int FindClose(HANDLE handle)
 				DCALL.ShmReq.Fd = shm_open((const char *)DCALL.ShmReq.Name, O_CREAT | O_EXCL , 0777);
 				if (DCALL.ShmReq.Fd<0)
 				{
-					perror("SHM_CREAT 7");
+					jtprintf("[%s]SHM_CREAT error, %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 
@@ -243,11 +280,10 @@ static int FindClose(HANDLE handle)
 			}
 			case SHM_OPEN:
 			{
-				
 				DCALL.ShmReq.Fd = shm_open((const char *)DCALL.ShmReq.Name, O_RDWR, 0777);
 				if (DCALL.ShmReq.Fd<0)
 				{
-					perror("SHM_OPEN 8");
+					jtprintf("[%s]SHM_OPEN error, %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 
@@ -255,7 +291,7 @@ static int FindClose(HANDLE handle)
 				DCALL.ShmReq.Ptr = (char*)mmap(NULL, DCALL.ShmReq.Size, PROT_READ | PROT_WRITE, MAP_SHARED, DCALL.ShmReq.Fd, 0);
 				if (DCALL.ShmReq.Ptr  == MAP_FAILED)
 				{
-					perror("SHM_OPEN 9");
+					jtprintf("[%s]SHM_OPEN mmap MAP_FAILED, %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 
@@ -265,7 +301,7 @@ static int FindClose(HANDLE handle)
 			{                
 				if (shm_unlink((const char *)DCALL.ShmReq.Name)<0)
 				{
-					perror("SHM_UNLINK");
+					jtprintf("[%s]SHM_UNLINK error, %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 			
@@ -275,7 +311,7 @@ static int FindClose(HANDLE handle)
 			{
 				if (close(DCALL.ShmReq.Fd)<0)
 				{
-					printf("SHM_CLOSE error, fd %d", DCALL.ShmReq.Fd);
+					jtprintf("[%s]SHM_CLOSE error, fd %d, %s\n", __FUNCTION__, DCALL.ShmReq.Fd, strerror(errno));
 					return FALSE;
 				}
 				break;
@@ -284,7 +320,7 @@ static int FindClose(HANDLE handle)
 			{
 				if (ftruncate(DCALL.ShmReq.Fd, DCALL.ShmReq.Size)<0)
 				{
-				   perror("SHM_TRUN 10");
+				   jtprintf("[%s]SHM_TRUN error, %s\n", __FUNCTION__, strerror(errno));
 				   return FALSE;
 				}
 			
@@ -294,14 +330,14 @@ static int FindClose(HANDLE handle)
 			{
 				if (munmap(DCALL.ShmReq.Ptr, DCALL.ShmReq.Size)<0)
 			    {
-					perror("SHM_RELEASE");
+					jtprintf("[%s]SHM_RELEASE error, %s\n", __FUNCTION__, strerror(errno));
 					return FALSE;
 				}
 	            break;
 			}
 			case SHM_UNKOWN:
 			default:
-				printf("FindClose SHM_UNKOWN\n");
+				jtprintf("[%s]FindClose SHM_UNKOWN\n", __FUNCTION__);
 				return FALSE;
 		}
 
@@ -313,7 +349,7 @@ static int FindClose(HANDLE handle)
 		
 	}
 
-	printf("FindClose never here\n");
+	printf("[%s]FindClose never here\n", __FUNCTION__);
 	return FALSE;
 }
 

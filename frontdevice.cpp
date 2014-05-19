@@ -12,9 +12,6 @@
 #include <errno.h>
 #include <string.h>
 
-pthread_rwlock_t rwlock;
-pthread_rwlockattr_t attr;
-
 #define ALLOC_SPEC_DEVICE(type)   											\
 	do{																		\
 		static void* dl##type = NULL;										\
@@ -52,19 +49,27 @@ int g_initial=0;
 /* grab an object (i.e. increment its refcount) and return the object */
 
 //lock
+pthread_rwlock_t rwlockdevicelist;
+
 struct list devicelist = {&devicelist, &devicelist};
 
-int share_lock_devicelist()
+int share_lock_devicelist(const char* FunName)
 {
-	return pthread_rwlock_rdlock(&rwlock);
+	pthread_rwlock_rdlock(&rwlockdevicelist);
+	jtprintf("[%s]FUNC %s S Locked\n", __FUNCTION__, FunName);
+	return 0;
 }
-int unique_lock_devicelist()
+int unique_lock_devicelist(const char* FunName)
 {
-	return pthread_rwlock_wrlock(&rwlock);
+	pthread_rwlock_wrlock(&rwlockdevicelist);
+	jtprintf("[%s]FUNC %s U Locked\n", __FUNCTION__, FunName);
+	return 0;
 }
-int unlock_devicelist()
+int unlock_devicelist(const char* FunName)
 {
-	return pthread_rwlock_unlock(&rwlock);
+	pthread_rwlock_unlock(&rwlockdevicelist);
+	jtprintf("[%s]FUNC %s Unlocked\n", __FUNCTION__, FunName);
+	return 0;
 }
 
 struct object *grab_object( void *ptr )
@@ -89,8 +94,9 @@ int gloal_init()
 {
 	if(g_initial==0)
 	{
+		pthread_rwlockattr_t attr;
 		pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
-		int ret = pthread_rwlock_init(&rwlock, &attr);
+		int ret = pthread_rwlock_init(&rwlockdevicelist, &attr);
 		if(ret)
 		{
 			jtprintf("[%s]pthread_rwlock_init failed\n", __FUNCTION__);
@@ -156,6 +162,11 @@ struct device *alloc_device(unsigned int type)
 	{
 		ALLOC_SPEC_DEVICE(dh);
 	}
+	else if(type==DEVICE_HK)
+	{
+		ALLOC_SPEC_DEVICE(hk);
+	}
+
 #endif
 
 	return (struct device *)NULL;
@@ -260,6 +271,22 @@ struct device *get_device_by_address(char* ip, unsigned int port)
 	return NULL;
 }
 
+struct device *get_device_by_channel(struct channel* chn)
+{
+	struct device* device;
+	LIST_FOR_EACH_ENTRY(device, &devicelist, struct device, entry)
+	{
+		struct channel *chn_;
+		LIST_FOR_EACH_ENTRY(chn_, &device->channels, struct channel, entry)
+		{
+			if(chn_==chn)
+				return device;
+		}
+	}
+
+	return NULL;
+}
+
 struct device *get_device_by_stream(stream* stm)
 {
 	struct device* device;
@@ -332,6 +359,7 @@ int channel_init(struct channel *chn)
 		chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM_CLOSEED, NULL, &chn->audiouserdata);
 	chn->audiocallback = NULL;
 
+	chn->insendtalkdata = 0;
 	return 0;
 }
 

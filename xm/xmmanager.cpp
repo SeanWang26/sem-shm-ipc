@@ -7,6 +7,7 @@
 #include "xmmanager.h"
 #include "../devicetype.h"
 #include "../jtprintf.h"
+#include "../create_detached_thread.h"
 
 static int g_xm_initaled = 0;
 
@@ -26,6 +27,9 @@ static int xm_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 static int xm_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Rsp *rsp);
 static int xm_ptz_control(struct device *, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp);
 static int xm_set_system_time(struct device *, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
+static int xm_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
+static int xm_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
+static int xm_send_talk_data(struct device *, char *data, unsigned len);
 
 
 static struct device_ops xm_ops = 
@@ -46,6 +50,9 @@ static struct device_ops xm_ops =
 	xm_close_alarm_stream,
 	xm_ptz_control,
 	xm_set_system_time,
+	xm_start_talk,
+	xm_stop_talk,
+	xm_send_talk_data
 };
 
 void xm_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
@@ -128,74 +135,145 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 		unsigned int	   Reserved[6]; 		   //保留
 	} PACKET_INFO_EX;*/
 
-	if(pFrame->nPacketType == AUDIO_PACKET || pFrame->nPacketType == FILE_HEAD)
+	if(pFrame->nPacketType == VIDEO_P_FRAME  
+		|| pFrame->nPacketType == VIDEO_I_FRAME 
+		|| pFrame->nPacketType == VIDEO_B_FRAME
+		|| pFrame->nPacketType == VIDEO_BP_FRAME
+		|| pFrame->nPacketType == VIDEO_BBP_FRAME
+		|| pFrame->nPacketType == VIDEO_J_FRAME)
+	{
+		struct channel* chn = (struct channel*)stream->stm.obj.parent;
+		struct device* dev = (struct device*)chn->obj.parent;
+
+		st_stream_data stmdata;
+		stmdata.streamtype = VIDEO_STREAM_DATA;
+		stmdata.pdata= pFrame->pPacketBuffer+8;
+		stmdata.datalen = pFrame->dwPacketSize-8;
+		
+		stmdata.stream_info.video_stream_info.frametype = xm_pack_type_convert((enum MEDIA_PACK_TYPE)pFrame->nPacketType);
+		stmdata.stream_info.video_stream_info.width = pFrame->dwPacketSize;
+		stmdata.stream_info.video_stream_info.height = pFrame->dwPacketSize;
+
+		if(stream->stm.id==0)//主码流
+		{
+			stmdata.stream_info.video_stream_info.encode = dev->encodeinfo.encode_info[chn->id].mainencode.encodetype;
+			stmdata.stream_info.video_stream_info.fps = dev->encodeinfo.encode_info[chn->id].mainencode.fps;
+			stmdata.stream_info.video_stream_info.bitrate = dev->encodeinfo.encode_info[chn->id].mainencode.bitrate;
+		}
+		else//子码流
+		{
+			stmdata.stream_info.video_stream_info.encode = dev->encodeinfo.encode_info[chn->id].sub1encode.encodetype;
+			stmdata.stream_info.video_stream_info.fps = dev->encodeinfo.encode_info[chn->id].sub1encode.fps;
+			stmdata.stream_info.video_stream_info.bitrate = dev->encodeinfo.encode_info[chn->id].sub1encode.bitrate;
+		}
+		
+		stmdata.year = pFrame->nYear;
+		stmdata.month = pFrame->nMonth;
+		stmdata.day = pFrame->nDay;
+		stmdata.hour = pFrame->nHour;
+		stmdata.minute = pFrame->nMinute;
+		stmdata.second = pFrame->nSecond;
+		
+		struct timespec ts;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		if(stream->stm.llbegintime==0ULL)
+		{
+			stmdata.llbegintime = ts.tv_sec* + ts.tv_nsec/100;//100ns
+			stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100;//100ns
+		}
+		else
+		{
+			stmdata.llbegintime = stream->stm.llbegintime;
+			stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100 - stmdata.llbegintime;//100ns
+		}
+		
+		if(stream->stm.callback)
+			stream->stm.callback(CALLBACK_TYPE_VIDEO_STREAM, &stmdata, &stream->stm.userdata);
+
 		return 1;
-
-	st_stream_data stmdata;
-	stmdata.streamtype = VIDEO_STREAM_DATA;
-	stmdata.pdata= pFrame->pPacketBuffer+8;
-	stmdata.datalen = pFrame->dwPacketSize-8;
-	stmdata.stream_info.video_stream_info.encode = stream->currentencode;
-	stmdata.stream_info.video_stream_info.frametype = xm_pack_type_convert((enum MEDIA_PACK_TYPE)pFrame->nPacketType);
-	stmdata.stream_info.video_stream_info.width = pFrame->dwPacketSize;
-	stmdata.stream_info.video_stream_info.height = pFrame->dwPacketSize;
-	stmdata.stream_info.video_stream_info.fps = 0;
-	stmdata.stream_info.video_stream_info.bitrate = 0;
-	stmdata.year = pFrame->nYear;
-	stmdata.month = pFrame->nMonth;
-	stmdata.day = pFrame->nDay;
-	stmdata.hour = pFrame->nHour;
-	stmdata.minute = pFrame->nMinute;
-	stmdata.second = pFrame->nSecond;
-
-	struct timespec ts;
-	clock_gettime(CLOCK_REALTIME, &ts);
-	if(stream->stm.llbegintime==0ULL)
+	}	
+	else if(pFrame->nPacketType == AUDIO_PACKET)
 	{
-		stmdata.llbegintime = ts.tv_sec* + ts.tv_nsec/100;//100ns
-		stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100;//100ns
+		//jtprintf("[%s]AUDIO_PACKET %d\n", __FUNCTION__, stream->stm.id);
+		struct channel* chn = (struct channel*)stream->stm.obj.parent;
+		struct device* dev = (struct device*)chn->obj.parent;
+
+		if(chn->audiocallback)// && chn->audiouserdata)
+		{
+			//jtprintf("[%s]AUDIO_PACKET %d, pFrame->dwPacketSize %d\n", __FUNCTION__, stream->stm.id, pFrame->dwPacketSize);
+
+			st_stream_data stmdata;
+			stmdata.streamtype = AUDIO_STREAM_DATA;
+			stmdata.pdata= pFrame->pPacketBuffer+8;
+			stmdata.datalen = pFrame->dwPacketSize-8;
+			stmdata.stream_info.audio_stream_info.encode = dev->encodeinfo.encode_info[chn->id].audioencode.encodetype;
+			stmdata.stream_info.audio_stream_info.channel = dev->encodeinfo.encode_info[chn->id].audioencode.channel;
+			stmdata.stream_info.audio_stream_info.frequency = dev->encodeinfo.encode_info[chn->id].audioencode.frequency;
+			stmdata.stream_info.audio_stream_info.depth = dev->encodeinfo.encode_info[chn->id].audioencode.depth;
+			stmdata.stream_info.audio_stream_info.bitrate = dev->encodeinfo.encode_info[chn->id].audioencode.bitrate;
+			stmdata.year = pFrame->nYear;
+			stmdata.month = pFrame->nMonth;
+			stmdata.day = pFrame->nDay;
+			stmdata.hour = pFrame->nHour;
+			stmdata.minute = pFrame->nMinute;
+			stmdata.second = pFrame->nSecond;
+
+			chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM, &stmdata, &chn->audiouserdata);
+		}
+
+		return 1;
 	}
-	else
+	else if(pFrame->nPacketType == FILE_HEAD)
 	{
-		stmdata.llbegintime = stream->stm.llbegintime;
-		stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100 - stmdata.llbegintime;//100ns
+		jtprintf("[%s]FILE_HEAD\n", __FUNCTION__, stream->stm.id);
 	}
-
-	if(stream->stm.callback)
-		stream->stm.callback(CALLBACK_TYPE_VIDEO_STREAM, &stmdata, &stream->stm.userdata);
-
 	// it must return TRUE if decode successfully,or the SDK will consider the decode is failed
 	return 1;
 }
-void xm_talk_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, char byAudioFlag, long dwUser)
+void xm_audio_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, char byAudioFlag, long dwUser)
 {
 	//lock
-	FIND_DEVICE_BEGIN(struct xmdevice,DEVICE_XM)
+	//struct xmdevice
+	//jtprintf("[%s]lTalkHandle %ld, dwBufSize %d, byAudioFlag %d\n"
+	//					, __FUNCTION__, lTalkHandle, dwBufSize, byAudioFlag);
+		
+	/*FIND_DEVICE_BEGIN(struct xmdevice,DEVICE_XM)
 	{
 		if(dev->voicehandle == lTalkHandle)
 		{
 			struct channel* chn; 												
 			LIST_FOR_EACH_ENTRY(chn, &dev->dev.channels, struct channel, entry) 
 			{
-				if(chn->audiocallback && chn->audiouserdata)
+				if(chn->audiocallback)// && chn->audiouserdata)
 				{
 					st_stream_data stmdata;
 					stmdata.streamtype = AUDIO_STREAM_DATA;
-					stmdata.pdata= pDataBuf;
-					stmdata.datalen = dwBufSize;
-
+					stmdata.pdata= pDataBuf+8;
+					stmdata.datalen = dwBufSize-8;
+					stmdata.stream_info.audio_stream_info.encode = dev->dev.encodeinfo.encode_info[chn->id].audioencode.encodetype;
+					stmdata.stream_info.audio_stream_info.channel = dev->dev.encodeinfo.encode_info[chn->id].audioencode.channel;
+					stmdata.stream_info.audio_stream_info.frequency = dev->dev.encodeinfo.encode_info[chn->id].audioencode.frequency;
+					stmdata.stream_info.audio_stream_info.depth = dev->dev.encodeinfo.encode_info[chn->id].audioencode.depth;
+					stmdata.stream_info.audio_stream_info.bitrate = dev->dev.encodeinfo.encode_info[chn->id].audioencode.bitrate;
+					//stmdata.year = pFrame->nYear;
+					//stmdata.month = pFrame->nMonth;
+					//stmdata.day = pFrame->nDay;
+					//stmdata.hour = pFrame->nHour;
+					//stmdata.minute = pFrame->nMinute;
+					//stmdata.second = pFrame->nSecond;
+					
 					jtprintf("[%s]device %p, lTalkHandle %ld, chn %d\n"
 						, __FUNCTION__, (void*)dev, lTalkHandle, chn->id);
 					chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM, &stmdata, &chn->audiouserdata);
 				}
 			}
-		
-		
+			
 			break;
 		}
 
 	}
 	FIND_DEVICE_END
+	*/
 
 	//BOOL bResult = TRUE;
 }
@@ -364,19 +442,19 @@ static int xm_get_encode_mode(int type)
 	switch(type)
 	{
 		case SDK_CAPTURE_COMP_DIVX_MPEG4:	///< DIVX MPEG4。
-			return type;
+			return VIDEO_ENCODE_UNKOWN;
 		break;
 		case SDK_CAPTURE_COMP_MS_MPEG4:		///< MS MPEG4。
-			return type;
+			return VIDEO_ENCODE_UNKOWN;
 		break;
 		case SDK_CAPTURE_COMP_MPEG2: 		///< MPEG2。
-			return type;
+			return VIDEO_ENCODE_UNKOWN;
 		break;
 		case SDK_CAPTURE_COMP_MPEG1: 		///< MPEG1。
-			return type;
+			return VIDEO_ENCODE_UNKOWN;
 		break;
 		case SDK_CAPTURE_COMP_H263:			///< H.263
-			return type;
+			return VIDEO_ENCODE_UNKOWN;
 		break;
 		case SDK_CAPTURE_COMP_MJPG:			///< MJPG
 			return VIDEO_ENCODE_JPEG;
@@ -401,8 +479,7 @@ static int xm_fill_encode_info(struct device* dev, struct SDK_EncodeConfigAll_SI
 	{
 		//主
 		dev->encodeinfo.encode_info[i].mainencode.enable = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.bVideoEnable;
-		dev->encodeinfo.encode_info[i].mainencode.encodetype =  EncodeConfig->vEncodeConfigAll[i].dstMainFmt.bVideoEnable
-			= xm_get_encode_mode(EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iCompression);
+		dev->encodeinfo.encode_info[i].mainencode.encodetype = xm_get_encode_mode(EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iCompression);
 		dev->encodeinfo.encode_info[i].mainencode.fps = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.nFPS;
 
 		xm_resolution_convert(EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iResolution
@@ -416,8 +493,7 @@ static int xm_fill_encode_info(struct device* dev, struct SDK_EncodeConfigAll_SI
 
 		//辅1
 		dev->encodeinfo.encode_info[i].sub1encode.enable = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.bVideoEnable;
-		dev->encodeinfo.encode_info[i].sub1encode.encodetype 
-			= xm_get_encode_mode(EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iCompression);
+		dev->encodeinfo.encode_info[i].sub1encode.encodetype = xm_get_encode_mode(EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iCompression);
 		dev->encodeinfo.encode_info[i].sub1encode.fps = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.nFPS;
 		
 		xm_resolution_convert(EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iResolution
@@ -428,6 +504,14 @@ static int xm_fill_encode_info(struct device* dev, struct SDK_EncodeConfigAll_SI
 		dev->encodeinfo.encode_info[i].sub1encode.bitrate = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.nBitRate;
 		dev->encodeinfo.encode_info[i].sub1encode.bitratectl = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iBitRateControl;
 		dev->encodeinfo.encode_info[i].sub1encode.gop = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iGOP;
+
+		//音频
+		dev->encodeinfo.encode_info[i].audioencode.encodetype = AUDIO_G711;
+		dev->encodeinfo.encode_info[i].audioencode.frequency = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.afFormat.nFrequency;
+		dev->encodeinfo.encode_info[i].audioencode.bitrate = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.afFormat.nBitRate;
+		dev->encodeinfo.encode_info[i].audioencode.channel = 1;
+		dev->encodeinfo.encode_info[i].audioencode.depth = 16;
+
 	}
 
 	return 0;
@@ -593,6 +677,9 @@ static int xm_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 {
 	jtprintf("[%s]\n", __FUNCTION__);
 	assert(dev!=NULL);
+	assert(req->Channel < MAX_CHANNEL_ENCODE_INFO);
+	assert(req->Codec < 10);
+	
 	if(get_device(dev)==NULL)
 	{
 		jtprintf("[%s]dev %p no find\n", __FUNCTION__, dev);
@@ -643,7 +730,7 @@ static int xm_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 		stm = (struct xmstream*)alloc_stream(sizeof(struct xmstream));
 		if(stm)
 		{
-			stm->stm.id = req->Codec;
+			stm->stm.id = req->Codec;//check stm.id
 			if((struct stream*)stm != add_stream((channel*)chn, (struct stream*)stm))
 			{
 				jtprintf("[%s]add_stream old??\n", __FUNCTION__);
@@ -770,7 +857,7 @@ static int xm_operator_channel(struct channel *chn, int type, void* data)
 	if(STOP_AUDIO==type)//关闭音频
 	{
 		jtprintf("[%s]STOP_AUDIO \n", __FUNCTION__);
-		
+
 		if(chn->audiocallback)
 			chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM_CLOSEED, SUCCESS, &chn->audiouserdata);
 		
@@ -781,13 +868,13 @@ static int xm_operator_channel(struct channel *chn, int type, void* data)
 		jtprintf("[%s]START_AUDIO \n", __FUNCTION__);
 		struct stOpenAudioStream_Req *req = (struct stOpenAudioStream_Req *)data;
 
-		void* tmp = chn->audiouserdata;
+		void* tmp = chn->audiouserdata;//记录之前的用户数据
 
 		chn->audiocallback = (jt_stream_callback)req->Callback;
 		chn->audiouserdata = req->UserData;
 		
 		if(chn->audiocallback)
-			chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM_OPENED, SUCCESS, &tmp);
+			chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM_OPENED, SUCCESS, &tmp);//对之前的用户数据进行处理
 	}
 	else if(CHECK_AUDIO_CHANNEL==type)//
 	{
@@ -806,42 +893,36 @@ static int xm_open_audio_stream(struct device *dev, struct stOpenAudioStream_Req
 {
 	jtprintf("[%s]\n", __FUNCTION__);
 	assert(dev!=NULL);
-	if(get_device(dev)==NULL)
-	{
-		jtprintf("[%s]dev %p no find\n", __FUNCTION__, dev);
-		return DEVICE_NO_FOUND;		
-	}
-
-	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, dev->ip, dev->port);
-
-	xmdevice *xmdev = (xmdevice *)dev;
 	
+	xmdevice *xmdev = (xmdevice *)get_device(dev);
 	if(xmdev==NULL)
 	{
 		jtprintf("[%s]xmdev null\n", __FUNCTION__);
-		return DEVICE_NULL_FAILED;
+		return DEVICE_NO_FOUND;
 	}
 
+	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, xmdev->dev.ip, xmdev->dev.port);
+
 	struct xmchannel* chn = NULL;
-	chn = (struct xmchannel*)get_channel(&dev->channels, req->Channel);
+	chn = (struct xmchannel*)get_channel(&(xmdev->dev.channels), req->Channel);
 	if(chn == NULL)
 	{
 		return INVALID_CHANNEL_NO;
 	}
 
-	jtprintf("[%s]1 xmdev->voicehandle %ld\n", __FUNCTION__, xmdev->voicehandle);
-	if(xmdev->voicehandle == 0)
+	//jtprintf("[%s]1 xmdev->voicehandle %ld, xmdev->loginid %ld\n", __FUNCTION__, xmdev->voicehandle, xmdev->loginid);
+	/*if(xmdev->voicehandle == 0)
 	{
-		long voicehandle = H264_DVR_StartVoiceCom_MR(xmdev->loginid, xm_talk_data_callback, (long)dev);
+		long voicehandle = H264_DVR_StartVoiceCom_MR(xmdev->loginid, xm_audio_data_callback, (long)dev);
 		if(voicehandle <= 0)
 		{
 			jtprintf("[%s]H264_DVR_StartVoiceCom_MR voicehandle %ld, failed\n", __FUNCTION__, voicehandle);
-			return OPEN_AUDIO_STREAM_FAILED;
+			//return OPEN_AUDIO_STREAM_FAILED;
 		}
 
 		jtprintf("[%s]H264_DVR_StartVoiceCom_MR voicehandle %ld, ok\n", __FUNCTION__, voicehandle);
 		xmdev->voicehandle = voicehandle;
-	}
+	}*/
 
 	rsp->ChannelHandle = (long)do_channel(&dev->channels, req->Channel, xm_operator_channel, START_AUDIO, req);
 
@@ -851,20 +932,15 @@ static int xm_close_audio_stream(struct device *dev, struct stCloseAudioStream_R
 {
 	jtprintf("[%s]\n", __FUNCTION__);
 	assert(dev!=NULL);
-	if(get_device(dev)==NULL)
-	{
-		jtprintf("[%s]dev %p no find\n", __FUNCTION__, dev);
-		return DEVICE_NO_FOUND;		
-	}
-
-	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, dev->ip, dev->port);
-
-	xmdevice *xmdev = (xmdevice *)dev;
+	
+	xmdevice *xmdev = (xmdevice *)get_device(dev);
 	if(xmdev==NULL)
 	{
 		jtprintf("[%s]xmdev null\n", __FUNCTION__);
-		return DEVICE_NULL_FAILED;
+		return DEVICE_NO_FOUND;
 	}
+
+	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, xmdev->dev.ip, xmdev->dev.port);
 
 	struct xmchannel* chn = NULL;
 	chn = (struct xmchannel*)get_channel(&dev->channels, req->Channel);
@@ -876,7 +952,7 @@ static int xm_close_audio_stream(struct device *dev, struct stCloseAudioStream_R
 
 	do_channel(&dev->channels, req->Channel, xm_operator_channel, STOP_AUDIO, NULL);
 
-	int havechannelcnt=0;
+	/*int havechannelcnt=0;
 	do_each_channel(&dev->channels, xm_operator_channel, CHECK_AUDIO_CHANNEL, &havechannelcnt);
 	if(havechannelcnt==0)
 	{
@@ -891,7 +967,7 @@ static int xm_close_audio_stream(struct device *dev, struct stCloseAudioStream_R
 			jtprintf("[%s]H264_DVR_StopVoiceCom error\n", __FUNCTION__);
 			return CLOSE_AUDIO_STREAM_FAILED;
 		}
-	}
+	}*/
 
 	return SUCCESS;
 }
@@ -912,7 +988,7 @@ static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 	switch(req->Type)
 	{
 		case GET_ENCODE_CONFIG://获取编码配置
-		{		
+		{
 			jtprintf("[%s]GET_ENCODE_CONFIG, chn %d, codec %d\n"
 				, __FUNCTION__, req->Channel, req->Codec);
 			long curtime = time(0);
@@ -934,7 +1010,7 @@ static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 					jtprintf("[%s]H264_DVR_GetDevConfig ok, dwRetLen %lu\n", __FUNCTION__, dwRetLen);
 				}
 				else
-				{	
+				{
 					jtprintf("[%s]GetConfig Wrong:%d,RetLen:%ld  !=  %d\n"
 								, __FUNCTION__,bSuccess,dwRetLen,sizeof (SDK_EncodeConfigAll_SIMPLIIFY));
 					return GET_CONFIG_FAILED;
@@ -1208,3 +1284,94 @@ static int xm_set_system_time(struct device *dev, struct stSetTime_Req *req, str
 	
 	return -1;
 }
+int xm_start_talk(struct device* dev, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp)
+{	
+	jtprintf("[%s]\n", __FUNCTION__);
+	assert(dev!=NULL);
+	
+	xmdevice *xmdev = (xmdevice *)get_device(dev);
+	if(xmdev==NULL)
+	{
+		jtprintf("[%s]xmdev null\n", __FUNCTION__);
+		return DEVICE_NO_FOUND;
+	}
+
+	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, xmdev->dev.ip, xmdev->dev.port);
+
+	struct xmchannel* chn = NULL;
+	chn = (struct xmchannel*)get_channel(&(xmdev->dev.channels), req->Channel);
+	if(chn == NULL)
+	{
+		return INVALID_CHANNEL_NO;
+	}
+
+	jtprintf("[%s]1 xmdev->voicehandle %ld, xmdev->loginid %ld\n", __FUNCTION__, xmdev->voicehandle, xmdev->loginid);
+
+	if(xmdev->voicehandle == 0)
+	{
+		long voicehandle = H264_DVR_StartVoiceCom_MR(xmdev->loginid, xm_audio_data_callback, (long)dev);
+		if(voicehandle <= 0)
+		{
+			jtprintf("[%s]H264_DVR_StartVoiceCom_MR voicehandle %ld, failed\n", __FUNCTION__, voicehandle);
+			return START_TALK_FAILED;
+		}
+
+		jtprintf("[%s]H264_DVR_StartVoiceCom_MR voicehandle %ld, ok\n", __FUNCTION__, voicehandle);
+		xmdev->voicehandle = voicehandle;
+
+		//pthread_t tid;
+		//create_detached_thread(&tid, xm_send_talk_data_thread, xmdev)
+	}
+
+	rsp->DeviceHandle = (long long) xmdev;
+	rsp->Channel = (long)chn;//(long)do_channel(&dev->channels, req->Channel, xm_operator_channel, START_AUDIO, req);
+
+	return SUCCESS;
+}
+int xm_stop_talk(struct device * dev, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp)
+{
+	jtprintf("[%s]\n", __FUNCTION__);
+	assert(dev!=NULL);
+
+	xmdevice *xmdev = (xmdevice *)get_device(dev);
+	if(xmdev==NULL)
+	{
+		jtprintf("[%s]xmdev null\n", __FUNCTION__);
+		return DEVICE_NO_FOUND;
+	}
+
+	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, xmdev->dev.ip, xmdev->dev.port);
+
+	//struct xmchannel* chn = NULL;
+	//chn = (struct xmchannel*)get_channel(&dev->channels, req->Channel);
+	//if(chn == NULL)
+	//{
+	//	return INVALID_CHANNEL_NO;
+	//}
+	
+	if(xmdev->voicehandle)
+	{
+		if(H264_DVR_StopVoiceCom(xmdev->voicehandle)==0)
+		{
+			jtprintf("[%s]H264_DVR_StopVoiceCom wrong!!\n", __FUNCTION__);
+
+			//return STOP_TALK_FAILED;///??????
+		}
+
+		xmdev->voicehandle = 0;
+	}
+
+	return SUCCESS;
+}
+int xm_send_talk_data(struct device *dev, char *data, unsigned long len)
+{
+	xmdevice *xmdev = (xmdevice *)dev;
+	if(0==H264_DVR_VoiceComSendData (xmdev->voicehandle, data, len))
+	{
+		jtprintf("[%s]H264_DVR_StopVoiceCom wrong!!\n", __FUNCTION__);
+		return SEND_TALK_DATA_FAILED;
+	}
+	
+	return SUCCESS;	
+}
+

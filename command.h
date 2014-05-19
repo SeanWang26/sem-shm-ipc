@@ -126,7 +126,7 @@ struct stOpenAudioStream_Req
 {
 	long long				DeviceHandle;
 	unsigned int			Channel;
-	void*                   Callback;
+	jt_stream_callback      Callback;
 	void*                   UserData;
 };
 struct stOpenAudioStream_Rsp

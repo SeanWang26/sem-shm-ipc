@@ -50,6 +50,8 @@ FRONT_API int CALL_TYPE jt_open_alarm_stream(void* handle, struct stOpenAlarmStr
 FRONT_API int CALL_TYPE jt_close_alarm_stream(void* handle, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Rsp *rsp);
 FRONT_API int CALL_TYPE jt_ptz_control(void* handle, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp);
 FRONT_API int CALL_TYPE jt_set_system_time(void* handle, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
+FRONT_API int CALL_TYPE jt_start_talk(void* handle, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
+FRONT_API int CALL_TYPE jt_stop_talk(void* handle, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
 
 #ifdef __cplusplus
 }
