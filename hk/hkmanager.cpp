@@ -827,8 +827,8 @@ int hk_audio_encode_convert(int type)
 static int hk_fill_ch_encode_info(struct device* dev, int channel, NET_DVR_COMPRESSIONCFG_V30 *EncodeConfig)
 {
 	dev->encodeinfo.ch_encode_info[channel].ch_last_get_time = time(0);
-	
-		//Ö÷
+
+	//Ö÷
 	dev->encodeinfo.ch_encode_info[channel].mainencode.enable = 1;
 	dev->encodeinfo.ch_encode_info[channel].mainencode.encodetype = hk_get_encode_mode(EncodeConfig->struNormHighRecordPara.byVideoEncType);
 	dev->encodeinfo.ch_encode_info[channel].mainencode.fps = EncodeConfig->struNormHighRecordPara.dwVideoFrameRate;
@@ -844,17 +844,17 @@ static int hk_fill_ch_encode_info(struct device* dev, int channel, NET_DVR_COMPR
 
 	//¸¨1
 	dev->encodeinfo.ch_encode_info[channel].sub1encode.enable = 1;
-	dev->encodeinfo.ch_encode_info[channel].sub1encode.encodetype = hk_get_encode_mode(EncodeConfig->struNormHighRecordPara.byVideoEncType);
-	dev->encodeinfo.ch_encode_info[channel].sub1encode.fps = EncodeConfig->struNormHighRecordPara.dwVideoFrameRate;
+	dev->encodeinfo.ch_encode_info[channel].sub1encode.encodetype = hk_get_encode_mode(EncodeConfig->struNetPara.byVideoEncType);
+	dev->encodeinfo.ch_encode_info[channel].sub1encode.fps = EncodeConfig->struNetPara.dwVideoFrameRate;
 	
-	hk_resolution_convert(EncodeConfig->struNormHighRecordPara.byResolution
+	hk_resolution_convert(EncodeConfig->struNetPara.byResolution
 						, &dev->encodeinfo.ch_encode_info[channel].sub1encode.width
 						, &dev->encodeinfo.ch_encode_info[channel].sub1encode.height);
 	
-	dev->encodeinfo.ch_encode_info[channel].sub1encode.quality = EncodeConfig->struNormHighRecordPara.byPicQuality;
-	dev->encodeinfo.ch_encode_info[channel].sub1encode.bitrate = hk_bitrate_convert(EncodeConfig->struNormHighRecordPara.dwVideoBitrate);
-	dev->encodeinfo.ch_encode_info[channel].sub1encode.bitratectl = EncodeConfig->struNormHighRecordPara.byBitrateType;
-	dev->encodeinfo.ch_encode_info[channel].sub1encode.gop = EncodeConfig->struNormHighRecordPara.wIntervalFrameI;
+	dev->encodeinfo.ch_encode_info[channel].sub1encode.quality = EncodeConfig->struNetPara.byPicQuality;
+	dev->encodeinfo.ch_encode_info[channel].sub1encode.bitrate = hk_bitrate_convert(EncodeConfig->struNetPara.dwVideoBitrate);
+	dev->encodeinfo.ch_encode_info[channel].sub1encode.bitratectl = EncodeConfig->struNetPara.byBitrateType;
+	dev->encodeinfo.ch_encode_info[channel].sub1encode.gop = EncodeConfig->struNetPara.wIntervalFrameI;
 
 	//ÒôÆµ
 	dev->encodeinfo.ch_encode_info[channel].audioencode.encodetype = hk_audio_encode_convert(EncodeConfig->struNormHighRecordPara.byAudioEncType);
@@ -1344,7 +1344,8 @@ static int hk_close_audio_stream(struct device *dev, struct stCloseAudioStream_R
 
 static void printf_hkdevice_encode_info(NET_DVR_COMPRESSIONCFG_V30 *struParams)
 {
-	jtprintf("[%s]byVideoEncType %d, dwVideoFrameRate %d, dwVideoBitrate %d, byResolution %d\n", __FUNCTION__
+	jtprintf("[%s]byStreamType %d, byVideoEncType %d, dwVideoFrameRate %d, dwVideoBitrate %d, byResolution %d\n", __FUNCTION__
+		, struParams->struNormHighRecordPara.byStreamType
 		, struParams->struNormHighRecordPara.byVideoEncType
 		, struParams->struNormHighRecordPara.dwVideoFrameRate
 		, struParams->struNormHighRecordPara.dwVideoBitrate

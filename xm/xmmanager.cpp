@@ -1044,6 +1044,8 @@ static int xm_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 				memcpy(einfo, &xmdev->dev.encodeinfo.ch_encode_info[req->Channel].sub1encode, sizeof(struct encode_info));
 			}
 
+			printf_device_encode_info(dev);
+
 			rsp->Config = (char*)einfo;
 			rsp->Size = 1;
 			
