@@ -18,12 +18,16 @@
 		if(dl##type==NULL)													\
 		{																	\
 			dl##type = dlopen("./libjt"#type".so", RTLD_NOW | RTLD_GLOBAL); \
-			if(dl##type==NULL) return NULL;												\
+			if(dl##type==NULL) 											\
+			{																	\
+				jtprintf("open lib ""./libjt"#type".so failed\n");    \
+				return NULL;	                                         \
+			}                                                             \
 			int (*type##_lib_init)() = NULL; 	dlerror();											\
 			type##_lib_init = (int(*)())dlsym(dl##type, #type"_lib_init");	\
 			if(type##_lib_init==NULL || type##_lib_init()) 										\
 			{ 																			\
-				printf("ALLOC_SPEC_DEVICE failed, lib %s, dl %p, interface %p, %s, errno %s\n", "./libjt"#type".so", dl##type, type##_lib_init, ""#type"_lib_init", dlerror());  \
+				jtprintf("ALLOC_SPEC_DEVICE failed, lib %s, dl %p, interface %p, %s, errno %s\n", "./libjt"#type".so", dl##type, type##_lib_init, ""#type"_lib_init", dlerror());  \
 				return NULL; 															\
 			} 			            													\
 		}																				\
@@ -310,6 +314,44 @@ struct device *get_device_by_stream(stream* stm)
 	return NULL;
 }
 
+void printf_device_encode_info(struct device *dev)
+{
+	for(int i=0; i<MAX_CHANNEL_ENCODE_INFO; ++i)
+	{
+		jtprintf("[%s]%d main, enable %d, encodetype %d, fps %d, width %d, height %d, quality %d, bitrate %d, bitratectl %d, gop %d\n", __FUNCTION__, i,
+			dev->encodeinfo.ch_encode_info[i].mainencode.enable,
+			dev->encodeinfo.ch_encode_info[i].mainencode.encodetype,
+			dev->encodeinfo.ch_encode_info[i].mainencode.fps,
+			dev->encodeinfo.ch_encode_info[i].mainencode.width,
+			dev->encodeinfo.ch_encode_info[i].mainencode.height,
+			dev->encodeinfo.ch_encode_info[i].mainencode.quality,
+			dev->encodeinfo.ch_encode_info[i].mainencode.bitrate,
+			dev->encodeinfo.ch_encode_info[i].mainencode.bitratectl,
+			dev->encodeinfo.ch_encode_info[i].mainencode.gop);
+
+		jtprintf("[%s]%d sub1, enable %d, encodetype %d, fps %d, width %d, height %d, quality %d, bitrate %d, bitratectl %d, gop %d\n", __FUNCTION__, i,
+			dev->encodeinfo.ch_encode_info[i].sub1encode.enable,
+			dev->encodeinfo.ch_encode_info[i].sub1encode.encodetype,
+			dev->encodeinfo.ch_encode_info[i].sub1encode.fps,
+			dev->encodeinfo.ch_encode_info[i].sub1encode.width,
+			dev->encodeinfo.ch_encode_info[i].sub1encode.height,
+			dev->encodeinfo.ch_encode_info[i].sub1encode.quality,
+			dev->encodeinfo.ch_encode_info[i].sub1encode.bitrate,
+			dev->encodeinfo.ch_encode_info[i].sub1encode.bitratectl,
+			dev->encodeinfo.ch_encode_info[i].sub1encode.gop);
+
+		jtprintf("[%s]%d audio, enable %d, encodetype %d, frequency %d, bitrate %d, channel %d, depth %d\n", __FUNCTION__, i, 
+			dev->encodeinfo.ch_encode_info[i].audioencode.enable,
+			dev->encodeinfo.ch_encode_info[i].audioencode.encodetype,
+			dev->encodeinfo.ch_encode_info[i].audioencode.frequency,
+			dev->encodeinfo.ch_encode_info[i].audioencode.bitrate,
+			dev->encodeinfo.ch_encode_info[i].audioencode.channel,
+			dev->encodeinfo.ch_encode_info[i].audioencode.depth);	
+	}
+
+
+}
+
 struct channel *alloc_channel(size_t size)
 {
     struct channel *chn = (struct channel *)calloc(1, size);
@@ -419,7 +461,7 @@ struct channel* get_channel(struct list *channels, int chnid)
 	return NULL;
 }
 
-struct stream *alloc_stream(size_t size)
+struct stream *alloc_stream(size_t size, int streamid)
 {
 	jtprintf("[%s]\n", __FUNCTION__);
     struct stream *stm = (struct stream *)calloc(1, size);
@@ -430,16 +472,35 @@ struct stream *alloc_stream(size_t size)
 		stm->obj.parent = 0;
 		stm->obj.name = (char*)"stream";
 		stm->obj.type = OBJECT_TYPE_STREAM;
-		stm->id	  = -1;
+		stm->id	  = streamid;
 		stm->pulling = 0;
 		list_init( &stm->entry);
 
 		stm->callback = NULL;
 		stm->userdata = NULL;
+
+		init_singlebuf(&stm->videobuf);
+		
         return stm;
     }
 	
     return (struct stream *)NULL;
+}
+
+struct stream *alloc_stream_with_videobuf(size_t size, int streamid, unsigned int len)
+{
+	struct stream *stm = alloc_stream(size, streamid);
+	if(stm)
+	{
+		if(alloc_memory_to_singlebuf(&stm->videobuf, len)==0)
+		{
+			jtprintf("[%s]alloc_memory_to_singlebuf %u failed, \n", __FUNCTION__, len);
+		}
+	}
+
+	jtprintf("[%s]ok, streamid %d, stm %p\n", __FUNCTION__, streamid, stm);
+	
+	return stm;
 }
 
 struct stream* add_stream(struct channel* channel, struct stream *newstm)
@@ -450,13 +511,13 @@ struct stream* add_stream(struct channel* channel, struct stream *newstm)
 		if(newstm->id == stm->id)
 		{	
 			//copy info to old???
-			jtprintf("[%s]find stream record %d\n", __FUNCTION__, stm->id);
+			jtprintf("[%s]find stream record id %d\n", __FUNCTION__, stm->id);
 			assert(0);
 			return stm;
 		}
 	}
 
-	jtprintf("[%s]add new stream record %d\n", __FUNCTION__, stm->id);
+	jtprintf("[%s]add new stream record id %d, stm %p\n", __FUNCTION__, newstm->id, newstm);
 
 	newstm->obj.parent = (object*)channel;
 
@@ -562,6 +623,9 @@ struct stream* get_stream_by_id(struct list* streams, int stmid)
 						
 	return NULL;
 }
+
+
+
 
 
 

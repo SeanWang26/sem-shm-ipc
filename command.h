@@ -173,6 +173,7 @@ struct stStartTalk_Req
 {
 	long long				DeviceHandle;
 	int						Channel;
+	jt_talk_callback        TalkCallback;            
 };
 struct stStartTalk_Rsp
 {

@@ -35,7 +35,7 @@ int main()
     //Login device
     NET_DVR_DEVICEINFO_V30 struDeviceInfo = {0};
     //LONG lUserID = NET_DVR_Login_V30("172.9.204.5", 8000, "admin", "12345", &struDeviceInfo);
-	LONG lUserID = NET_DVR_Login_V30("172.9.6.97", 8000, "admin", "12345", &struDeviceInfo);
+	LONG lUserID = NET_DVR_Login_V30("192.168.0.152", 8000, "admin", "12345", &struDeviceInfo);
     if (lUserID < 0)
     {
         printf("pyd---Login error, %d\n", NET_DVR_GetLastError());

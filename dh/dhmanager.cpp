@@ -28,7 +28,7 @@ static int dh_ptz_control(struct device *, struct stPTZControl_Req *req, struct 
 static int dh_set_system_time(struct device *dev, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
 static int dh_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 static int dh_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
-static int dh_send_talk_data(struct device *, char *data, unsigned len);
+static int dh_send_talk_data(struct device *, char *data, unsigned long len);
 
 static struct device_ops dh_ops = 
 {
@@ -645,10 +645,9 @@ static int dh_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	if(stm == NULL)
 	{
 		//add stream
-		stm = (struct dhstream*)alloc_stream(sizeof(struct dhstream));
+		stm = (struct dhstream*)alloc_stream(sizeof(struct dhstream), req->Codec);
 		if(stm)
 		{
-			stm->stm.id = req->Codec;
 			if((struct stream*)stm != add_stream((channel*)chn, (struct stream*)stm))
 			{
 				jtprintf("[%s]add_stream old??\n", __FUNCTION__);
@@ -1197,7 +1196,7 @@ int dh_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_
 
 	return NOT_IMPLEMENT;
 }
-int dh_send_talk_data(struct device *, char *data, unsigned len)
+int dh_send_talk_data(struct device *, char *data, unsigned long  len)
 {
 	
 	return NOT_IMPLEMENT;

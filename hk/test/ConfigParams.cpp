@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include "public.h"
 
+#include <string.h>
 
 #include <iostream>
 using namespace std;

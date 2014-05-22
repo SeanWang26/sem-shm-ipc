@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <execinfo.h>
+#include <assert.h>
 
 #include <pthread.h>
 #include "create_detached_thread.h"
 #include "usersdk.h"
+#include <signal.h>
 
 int stream_callback(int _callback_type, void* _data, void** _user)
 {
@@ -15,66 +18,69 @@ int stream_callback(int _callback_type, void* _data, void** _user)
 
 	if(CALLBACK_TYPE_VIDEO_STREAM==_callback_type)
 	{
-		//printf("video stream %s\n", __TIME__);
+		//printf("[stream_callback]video stream %s\n", __TIME__);
 	}
 	else if(CALLBACK_TYPE_AUDIO_STREAM==_callback_type)
 	{
-		printf("audio stream %s\n", __TIME__);
+		//printf("[stream_callback]audio stream %s\n", __TIME__);
 	}
 	else if(CALLBACK_TYPE_ALARM_STREAM==_callback_type)
 	{
-		printf("alarm stream %s\n", __TIME__);
+		//printf("[stream_callback]alarm stream %s\n", __TIME__);
 	}
 	else if(CALLBACK_TYPE_VIDEO_STREAM_CLOSEED==_callback_type)
 	{	
 		//关闭视频流的操作
-		printf("close video stream callback\n");
-		/*if(info)
+		printf("[stream_callback]close video stream callback user %p\n", user);
+		if(user)
 		{
-			*user = NULL;
-			delete info;
-		}*/
+			*_user= NULL;
+			delete user;
+		}
 
 		return 0;
 	}
 	else if(CALLBACK_TYPE_VIDEO_STREAM_OPENED==_callback_type)
 	{
-		printf("opened video stream callback\n");
-		/*if(info)
+		//打开视频流的操作
+		printf("[stream_callback]opened video stream callback user %p\n", user);
+		if(user)
 		{
-			*user = NULL;
-			delete info;
+			*_user = NULL;
+			delete user;
 			return 0;
-		}*/
+		}
 	}
 	else if(CALLBACK_TYPE_AUDIO_STREAM_CLOSEED==_callback_type)
 	{
-		printf("close audio stream callback\n");
-		/*if(info)
+		printf("[stream_callback]close audio stream callback user %p\n", user);
+		if(user)
 		{
-			*user = NULL;
-			delete info;
-		}*/
+			*_user = NULL;
+			delete user;
+		}
 		
 		return 0;
 	}
 	else if(CALLBACK_TYPE_AUDIO_STREAM_OPENED==_callback_type)
 	{
-		printf("open audio stream callback\n");
-		/*if(info)
+		printf("[stream_callback]open audio stream callback user %p\n", user);
+		if(user)
 		{
-			*user = NULL;
-			delete info;
+			*_user = NULL;
+			delete user;
 			return 0;
-		}*/
+		}
 	}
 
 	return 0;
 }
 
 void* handle= NULL;
-int devtype = DEVICE_XM;
+int devtype = DEVICE_HK;
 //int devtype = DEVICE_DH;
+//int devtype = DEVICE_XM;
+
 
 
 void* func(void *)
@@ -94,7 +100,7 @@ void* func(void *)
 		printf("jt_create_device %d ok, %p\n", devtype, handle);
 	}
 
-	struct stLogin_Req req = {{"192.168.3.71"}, 34567, {"admin"}, {""}, NULL};
+	struct stLogin_Req req = {{"192.168.3.152"}, 8000, {"admin"}, {"12345"}, NULL};
 	struct stLogin_Rsp rsp;
 	ret = jt_login(handle, &req, &rsp);
 	if(ret)
@@ -106,6 +112,15 @@ void* func(void *)
 		printf("jt_login ok %d\n", ret);
 	}
 
+	struct stGetConfig_Req reqc;
+	struct stGetConfig_Rsp rspc;
+	reqc.Channel = 0;
+	reqc.Codec = 0;
+	reqc.Type = GET_ENCODE_CONFIG;
+
+	jt_get_config(handle, &reqc, &rspc);
+
+
 	while(1)
 	{
 		struct stOpenVideoStream_Req req2;
@@ -116,7 +131,7 @@ void* func(void *)
 		struct stOpenVideoStream_Rsp rsp2;
 		jt_open_video_stream(handle, &req2, &rsp2);
 
-		struct stOpenAlarmStream_Req req3;
+		/*struct stOpenAlarmStream_Req req3;
 		struct stOpenAlarmStream_Rsp rsp3;
 		req3.Callback = stream_callback;
 		req3.UserData = new int(2);
@@ -129,9 +144,9 @@ void* func(void *)
 		req5.UserData = new int(2);
 		req5.Channel = 0;
 		//jt_open_audio_stream(handle, &req5, &rsp5);
+*/
 
-
-		sleep(500);
+		sleep(5);
 
 		//关闭视频流
 		struct stCloseVideoStream_Req req4;
@@ -149,14 +164,105 @@ void* func(void *)
 
 	return NULL;
 }
+void ShowSignalType(int value)
+{
+	switch(value)
+	{
+		case 2:
+			printf("\n SIGINT : 点击了Ctrl+C 关闭\n");
+		break;
+		case 3:
+			printf("\n SIGQUIT \n");
+		break;
+		case 8:
+			printf("\n SIGFPE : 浮点异常\n");
+		break;
+		case 9:
+			printf("\n SIGKILL \n");
+		break;
+		case 11:
+			printf("\n SIGSEGV : 段错误\n");
+		break;
+		case 13:
+			printf("\n SIGPIPE : 管道异常\n");
+		break;
+		case 15:
+			printf("\n SIGTERM : 被另一个进程关闭\n");
+		break;
+		default:
+			printf("\n Unknow type %d \n", value);
+	}
+	
+}
+
+void HandleException(int value)
+{
+	printf("\n#########handle_exception  catch ERROR %d ,"
+		" show use $kill -l  #########\n",value);
+	void *stack_p[10];
+	char **stack_info;
+	int size = 0;
+	char strKillTheSamePortLnvrCmd[255];
+
+	ShowSignalType(value);
+	
+	size = backtrace(stack_p, sizeof(stack_p));
+	stack_info = backtrace_symbols(stack_p, size);
+	
+	printf("%d stack frames.\n", size);
+
+	for(int i = 0; i < size; i++)
+	{
+		printf ("%s\n", stack_info[i]);
+	}
+
+	//在守护里再输出
+	fprintf(stderr, "\n#########handle_exception  catch ERROR %d ,"
+		" show use $kill -l  #########\n",value);
+	fprintf(stderr, "%d 行 stack frames.\n", size);
+	
+	for(int i = 0; i < size; i++)
+	{
+		fprintf(stderr,"%s\n", stack_info[i]);
+	}
+
+	if(stack_info)
+	{
+		free(stack_info);
+		stack_info = NULL;
+	}
+
+	//ShowMemInfo();
+	fflush(stdout);
+
+	if(value == SIGINT || value == SIGQUIT
+		|| value == SIGFPE || value == SIGKILL
+		|| value == SIGSEGV || value == SIGTERM)
+	{	
+		//printf("kill -9 $(lsof -i:%d | sed -n '2p' | awk '{print $2}') \n", gLoginPort);
+		//sprintf(strKillTheSamePortLnvrCmd, "kill -9 $(lsof -i:%d | sed -n '2p' | awk '{print $2}')", gLoginPort);
+		//system(strKillTheSamePortLnvrCmd);
+		assert(false);
+	}
+	
+}
 
 int main(int argc, char** argv)
 {
 	printf("time %s\n", __TIME__);
 
 	pthread_t tid; 
-	//create_detached_thread(&tid, func, NULL);
-	func(NULL);
+
+	signal(SIGQUIT, HandleException);
+	signal(SIGKILL, HandleException);
+	signal(SIGFPE, HandleException);
+	signal(SIGSEGV, HandleException);
+	signal(SIGTERM,HandleException);
+	signal(SIGPIPE, SIG_IGN);
+
+	
+	create_detached_thread(&tid, func, NULL);
+	//func(NULL);
 
 	sleep(20000);
 	return 0;

@@ -46,8 +46,15 @@
 #define B_FRAME                                              2
 #define P_FRAME                                              3
 
-#define AUDIO_G711                                        1
-#define AUDIO_G711A                                       10
+#define AUDIO_G711                                       1
+#define AUDIO_G711A                                      10
+#define AUDIO_G711U                                      11
+#define AUDIO_OGG_VORBIT                                 12
+#define AUDIO_G276                                       13
+#define AUDIO_AAC                                        14
+
+#define AUDIO_ENCODE_UNKOWN                              9999
+
 
 #define ALARM_TYPE_VIDEO_MOTION                          1000 //移动侦测
 #define ALARM_TYPE_VIDEO_LOSS                            1001 //视频丢失
@@ -126,6 +133,8 @@ struct st_stream_data
 //如果是停止的回调，用户可能会修改*user的值
 typedef int (CALL_TYPE *jt_stream_callback)(int callback_type, void* data, void** user);
 
+//如果是停止的回调，用户可能会修改*user的值
+typedef void* (*jt_talk_callback)(void* data);
 
 //回调事件类型
 #define CALLBACK_TYPE_VIDEO_STREAM               1     //视频数据
@@ -143,5 +152,10 @@ typedef int (CALL_TYPE *jt_stream_callback)(int callback_type, void* data, void*
 
 #define CALLBACK_TYPE_VIDEO_INfO_CHANGED         16     //视频流参数发生变化
 #define CALLBACK_TYPE_AUDIO_INfO_CHANGED         17     //音频流参数发生变化
+
+#define CALLBACK_TYPE_TALK_OPNED                 20     //对讲开始了
+#define CALLBACK_TYPE_TALK_CLOSED                21     //对讲结束了
+#define CALLBACK_TYPE_TALK_THREAD_TERMAL         22     //对讲线程终结了
+
 
 #endif

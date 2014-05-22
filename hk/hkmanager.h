@@ -2,14 +2,14 @@
 #define XMMANAGER_H
 
 #include "../frontdevice.h"
-#include "netsdk.h"
+#include "HCNetSDK.h"
 
 struct hkdevice
 {
 	struct device 	dev;
 	long 			loginid;
 	long			voicehandle;//				¶Ô½²¾ä±ú
-	///H264_DVR_DEVICEINFO info;
+	NET_DVR_DEVICEINFO_V30 info;
 };
 
 struct hkchannel
@@ -27,7 +27,7 @@ struct hkstream
 extern "C" int hk_lib_init();
 extern "C" struct hkdevice *hk_alloc_device(void);
 
-#define XM_INVALIDE_LOGINID    -1
-#define XM_INVALIDE_PLAYHANDLE -1
+#define HK_INVALIDE_LOGINID    -1
+#define HK_INVALIDE_PLAYHANDLE -1
 
 #endif

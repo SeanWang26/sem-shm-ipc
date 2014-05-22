@@ -16,7 +16,7 @@ void* CALL_TYPE jt_create_device(unsigned int type)
  
 	if(dev && add_device(dev))
 	{
-		jtprintf("add_device %d\n", type);
+		jtprintf("[jt_create_device]add_device %d\n", type);
 	}
 
 	unlock_devicelist(__FUNCTION__);
@@ -139,6 +139,8 @@ int CALL_TYPE jt_open_video_stream(void* handle, struct stOpenVideoStream_Req *r
 		return res;
 	}
 
+	jtprintf("[jt_open_video_stream]DEVICE_NO_FOUND\n");
+	
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }

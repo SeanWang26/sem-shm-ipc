@@ -1,16 +1,16 @@
 #SDK测试程序
 
-CXX   =  g++
+CXX   =  g++ -m32
 OPTI  = -o3
 CXXFLAGS = -Wall -Wno-strict-aliasing -Wno-unused-variable
 
 #包含头文件路径
-SUBDIR   = $(shell ls ../../src -R | grep /)
-SUBDIRS  = $(subst :,/,$(SUBDIR))
-INCPATHS = $(subst ../../,-I../../,$(SUBDIRS))
-INCPATHS += -I../../include/
+SUBDIR   = $(shell ls ./ -R | grep /)
+SUBDIRS  = $(subst :,./,$(SUBDIR))
+INCPATHS = $(subst .,-I.,$(SUBDIRS))
+INCPATHS += -I.
 
-VPATH = $(subst : ,:,$(SUBDIR))./
+VPATH = $(subst : ,:,$(SUBDIR)).
 SOURCE = $(foreach dir,$(SUBDIRS),$(wildcard $(dir)*.cpp))
 
 #将cpp的路径名称的.cpp后缀换为.o
@@ -20,9 +20,9 @@ OBJFILE  = $(foreach dir,$(OBJS),$(notdir $(dir)))
 #.o输出到.OBJ目录下
 OBJSPATH = $(addprefix obj/,$(OBJFILE)) 
 
-LIBPATH = ../lib/
-LIBS = -Wl,-rpath,../lib/ -lhcnetsdk
-EXE = ../lib/sdkTest
+LIBPATH = .
+LIBS = -Wl,-rpath,. -lhcnetsdk
+EXE = ./test
 
 $(EXE):$(OBJFILE)
 	$(CXX) -L$(LIBPATH)  -o $(EXE) $(OBJFILE) $(INCPATHS) $(LIBS)

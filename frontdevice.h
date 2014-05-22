@@ -29,10 +29,17 @@
 #include "plugerror.h"
 #include "devicetype.h"
 
+
+
+#include "seansinglebuf.h"
+
+
+
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
 
 struct object
 {
@@ -46,6 +53,7 @@ struct device_ops;
 
 struct audio_info 
 {
+	int enable;
 	int encodetype;
 	int frequency;
 	int bitrate;
@@ -54,7 +62,8 @@ struct audio_info
 };
 
 struct channel_encode_info
-{	
+{
+	int ch_last_get_time;//如果可以一次只能获取一个, 用这个
 	struct encode_info mainencode;
 	struct encode_info sub1encode;
 	struct audio_info  audioencode;
@@ -63,8 +72,8 @@ struct channel_encode_info
 #define MAX_CHANNEL_ENCODE_INFO 32
 struct dev_encode_info
 {	
-	int last_get_time;
-	struct channel_encode_info encode_info[MAX_CHANNEL_ENCODE_INFO];
+	int last_get_time;//如果可以一次获取所有,用这个
+	struct channel_encode_info ch_encode_info[MAX_CHANNEL_ENCODE_INFO];
 };
 
 struct device
@@ -86,6 +95,10 @@ struct device
 	jt_stream_callback        alarmcallback;//报警的回调
 	void*                     alarmuserdata;//报警的用户数据	
 
+	jt_talk_callback          talkcallback;
+	void*					  talkuserdata;
+	unsigned long int         talkthreadid;
+		
 	struct dev_encode_info    encodeinfo;
 	int                       logined;
 };
@@ -110,7 +123,10 @@ struct device_ops
 	int  (*set_system_time)(struct device *, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
 	int  (*start_talk)(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 	int  (*stop_talk)(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
-	int  (*send_talk_data)(struct device *, char *data, unsigned len);
+	int  (*send_talk_data)(struct device *, char *data, unsigned long len);
+
+	//int  (*capture_picture)(struct device *, char *req, unsigned long req);
+	//
 };
 
 struct channel
@@ -139,8 +155,10 @@ struct stream
 	jt_stream_callback   callback;//视频的回调
 	void*                userdata;//视频的用户数据
 
+	struct stsinglebufinfo     videobuf;//是否放到每个具体的流去，因为有的用不着
+
 	void*                decoder;  //
-	jt_stream_callback   callback2;//视频的回调
+	jt_stream_callback   callback2;//视频的回调	
 };
 
 struct device_debug
@@ -168,6 +186,8 @@ struct device *get_device_by_address(char* ip, unsigned int port);//老的接口没有
 struct device *get_device_by_channel(struct channel* chn);
 struct device *get_device_by_stream(struct stream* stm);
 
+void printf_device_encode_info(struct device *dev);
+
 struct channel *alloc_channel(size_t size);
 struct channel* add_channel(struct device *dev, struct channel *newchn);
 int channel_init(struct channel *chn);
@@ -180,11 +200,13 @@ typedef int (*operator_channel)(struct channel *chn, int optype, void* data);
 struct channel* do_channel(struct list *channels, int chnid, operator_channel ope, int optype, void* data);
 int do_each_channel(struct list *channels, operator_channel ope, int optype, void* data);
 
-struct stream *alloc_stream(size_t size);
+struct stream *alloc_stream(size_t size, int streamid);
+struct stream *alloc_stream_with_videobuf(size_t size, int streamid, unsigned int len);
+
 struct stream* add_stream(struct channel* channel, struct stream *newstm);
 int stream_init(struct stream *stm);
-struct stream* get_stream_by_id(struct list *streams, int stmid);
 struct stream* get_stream(struct list *streams, struct stream* stm);
+struct stream* get_stream_by_id(struct list *streams, int stmid);
 struct stream* get_stream_by_dev(struct device *dev, struct stream* stm);
 
 typedef int (*operator_stream)(struct stream *stm, void* data);

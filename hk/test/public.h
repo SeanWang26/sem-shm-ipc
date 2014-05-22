@@ -20,7 +20,7 @@
 #include <windows.h>
 #endif
 
-#include "../include/HCNetSDK.h"
+#include "HCNetSDK.h"
 
 
 #endif
