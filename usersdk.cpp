@@ -30,10 +30,10 @@ int JT_CALL_TYPE jt_distory_device(void* handle)
 	unlock_devicelist(__FUNCTION__);
 	if(dev)
 	{
-		struct stLogout_Req req; 
+		struct stLogout_Req req;
 		struct stLogout_Rsp rsp;
 		dev->ops->logout(dev, &req, &rsp);
-		free_device(dev);
+		destroy_device(dev);
 	}
 	return 0;
 }

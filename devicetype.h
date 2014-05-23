@@ -1,7 +1,7 @@
 #ifndef DEVICE_TYPE_H
 #define DEVICE_TYPE_H
 
-#ifdef WIN32 //windows platform
+#if (defined(WIN32) || defined(WIN64))
 
 #ifdef JT_FRONT_USER_MODULE_EXPORTS
 #define JT_FRONT_API __declspec(dllexport)
@@ -161,6 +161,7 @@ typedef int (JT_CALL_TYPE *jt_stream_callback)(int callback_type, void* data, vo
 //如果是停止的回调，用户可能会修改*user的值
 typedef void* (JT_CALL_TYPE *jt_talk_callback)(void* data);
 
+
 //回调事件类型
 #define CALLBACK_TYPE_VIDEO_STREAM               1     //视频数据
 #define CALLBACK_TYPE_AUDIO_STREAM               2     //音频流数据
@@ -182,5 +183,6 @@ typedef void* (JT_CALL_TYPE *jt_talk_callback)(void* data);
 #define CALLBACK_TYPE_TALK_CLOSED                21     //对讲结束了
 #define CALLBACK_TYPE_TALK_THREAD_TERMAL         22     //对讲线程终结了
 
-
+#define CALLBACK_TYPE_DEVICE_INIT                98     //设备被删除了
+#define CALLBACK_TYPE_DEVICE_DELETED             99     //设备被删除了
 #endif

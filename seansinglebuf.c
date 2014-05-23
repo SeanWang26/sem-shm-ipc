@@ -48,7 +48,8 @@ unsigned int alloc_memory_to_singlebuf(struct stsinglebufinfo *bufinfo, unsigned
 unsigned int free_singlebuf(struct stsinglebufinfo *bufinfo)
 {
 	bufinfo->len = 0;
-	free(bufinfo->buf);
+	if(bufinfo->buf)
+		free(bufinfo->buf);
 	bufinfo->buf = NULL;
 	bufinfo->bufusedlen = 0;
 	return 0;

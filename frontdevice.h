@@ -123,7 +123,6 @@ struct stream
 	struct object        obj;
 	int                  id;
 	int                  pulling;
-	//struct channel*      chn;
 	struct list          entry;
 
 	char                 get_first_i;
@@ -155,7 +154,7 @@ struct device *_alloc_device( const struct device_ops *ops);//放到ops里去
 struct device *add_device(struct device *dev);
 int device_init(struct device *dev);//
 struct device *remove_device(struct device *dev);
-int free_device(struct device * device);
+int destroy_device(struct device * device);
 
 struct device *get_device(struct device *dev);
 struct device *get_device_by_address(char* ip, unsigned int port);//老的接口没有提供增加设备的命令，就直接登陆了，所以要检查是否有同ip，port的设备了

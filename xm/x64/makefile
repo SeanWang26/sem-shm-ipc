@@ -1,9 +1,9 @@
 
 
 libjtxm.so:xmmanager.cpp ../jtprintf.c
-	g++ -m32 -g -fPIC -Wl,-rpath,./ -Wall -shared -o libjtxm.so xmmanager.cpp ../jtprintf.c libxmnetsdk.so
+	g++ -g -fPIC -Wl,-rpath,./ -Wall -shared -o libjtxm.so xmmanager.cpp ../jtprintf.c libxmnetsdk.so
 	chmod +x *.so
-	cp -r *.so ../
+	cp -r *.so ../../x64
 
 clean:
 	rm -f libjtxm.so

@@ -5,12 +5,20 @@
 
 #else
 
-#include "xm/xmmanager.h"
-//#include "dh/dhmanager.h"
 #include <dlfcn.h>
 #include <pthread.h>
-#include <errno.h>
+
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+#include <errno.h>
+#include "frontdevice.h"
+#include "devicetype.h"
+#include "jtprintf.h"
+
 
 #define ALLOC_SPEC_DEVICE(type)   											\
 	do{																		\
@@ -36,17 +44,6 @@
 		if(type##_alloc_device) 																	\
 			return (struct device *)type##_alloc_device(); 											\
 	}while(0)
-
-#endif
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include "frontdevice.h"
-#include "devicetype.h"
-#include "jtprintf.h"
-
 
 int g_initial=0;
 //#include "list.h"
@@ -131,6 +128,9 @@ struct device *_alloc_device( const struct device_ops *ops)
 
 		dev->alarmcallback = NULL;
 		dev->alarmuserdata = NULL;
+
+		dev->talkcallback = NULL;
+		dev->talkuserdata = NULL;
 		
         return dev;
     }
@@ -176,12 +176,37 @@ struct device *alloc_device(unsigned int type)
 	return (struct device *)NULL;
 }
 
-int free_device(struct device * device)
+int free_device(struct device * dev)
 {
-	//free stream
-	//free channel
-	//free device
-	jtprintf("not yet implement!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	if(dev->alarmcallback)
+		dev->alarmcallback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &dev->alarmuserdata);
+
+	if(dev->talkcallback)
+		dev->talkcallback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &dev->talkuserdata);
+
+	free(dev);
+	
+	return 0;
+}
+
+int destroy_device(struct device *dev)
+{
+	struct channel *chn1, chn2;
+	LIST_FOR_EACH_ENTRY_SAFE(chn1, chn2, &dev->channels, struct channel, entry)
+	{
+		struct stream *stm1, stm2;
+		LIST_FOR_EACH_ENTRY_SAFE(stm1, stm2, &chn1->streams, struct stream, entry)
+		{
+			list_remove(&stm1->entry);
+			free_stream(stm1);
+		}
+		
+		list_remove(&chn1->entry);
+		free_channel(chn1);
+	}
+
+	list_remove(&dev->entry);
+	free_device(dev);
 
 	return -1;
 }
@@ -189,8 +214,12 @@ int free_device(struct device * device)
 int device_init(struct device *dev)
 {
 	if(dev->alarmcallback)
-		dev->alarmcallback(CALLBACK_TYPE_ALARM_STREAM_CLOSEED, NULL, &dev->alarmuserdata);
+		dev->alarmcallback(CALLBACK_TYPE_DEVICE_INIT, NULL, &dev->alarmuserdata);
 	dev->alarmcallback = NULL;
+
+	if(dev->talkcallback)
+		dev->talkcallback(CALLBACK_TYPE_DEVICE_INIT, NULL, &dev->alarmuserdata);
+	dev->talkcallback = NULL;
 
 	memset(&dev->encodeinfo, 0, sizeof(dev->encodeinfo));//Çå³ý±àÂëÐÅÏ¢
 	memset(dev->ip, 0, sizeof(dev->ip));
@@ -373,6 +402,13 @@ struct channel *alloc_channel(size_t size)
     return (struct channel *)NULL;
 }
 
+int free_channel(struct channel *chn)
+{
+	if(chn->audiocallback)
+		chn->audiocallback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &chn->audiouserdata);
+	return 0;
+}
+
 struct channel* add_channel(struct device *dev, struct channel *newchn)
 {
 	struct channel* chn;
@@ -398,7 +434,7 @@ struct channel* add_channel(struct device *dev, struct channel *newchn)
 int channel_init(struct channel *chn)
 {
 	if(chn->audiocallback)
-		chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM_CLOSEED, NULL, &chn->audiouserdata);
+		chn->audiocallback(CALLBACK_TYPE_DEVICE_INIT, NULL, &chn->audiouserdata);
 	chn->audiocallback = NULL;
 
 	chn->insendtalkdata = 0;
@@ -487,6 +523,20 @@ struct stream *alloc_stream(size_t size, int streamid)
     return (struct stream *)NULL;
 }
 
+int free_stream(struct stream *stm)
+{
+	assert(stm);
+
+	if(stream->videobuf.buf)
+		free_singlebuf(&stream->videobuf);
+
+	if(stm->callback)
+		stm->callback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &stm->userdata);
+
+	free(stm);
+	return 0;
+}
+
 struct stream *alloc_stream_with_videobuf(size_t size, int streamid, unsigned int len)
 {
 	struct stream *stm = alloc_stream(size, streamid);
@@ -530,8 +580,10 @@ int stream_init(struct stream *stm)
 {
 	stm->pulling = 0;
 	if(stm->callback)
-		stm->callback(CALLBACK_TYPE_VIDEO_STREAM_CLOSEED, NULL, &stm->userdata);
+		stm->callback(CALLBACK_TYPE_DEVICE_INIT, NULL, &stm->userdata);
 	stm->callback = NULL;
+
+	clear_singlebuf(&stm->videobuf);
 
 	stm->llbegintime = 0;
 
