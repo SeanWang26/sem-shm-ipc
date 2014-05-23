@@ -103,7 +103,7 @@ static void dh_real_data_callback_v2(LLONG lRealHandle, DWORD dwDataType, BYTE *
 {
 	//lock
 	struct dhstream* stream = (struct dhstream*)dwUser;
-	jtprintf("dh get frame type %d, size %u, user %d\n", dwDataType, dwBufSize, dwUser);
+	jtprintf("[%s]dh get frame type %d, size %u, user %d\n", __FUNCTION__, dwDataType, dwBufSize, dwUser);
 
 
 	/*typedef struct
@@ -568,9 +568,9 @@ static int dosaveraw( unsigned char* data, int len)
 void CALLBACK Static_RealDataCallBackEx(LLONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, LONG param, LDWORD dwUser)
 {
 	//jtprintf("[%s]fRealDataCallBackEx\n", __FUNCTION__);
-	dosaveraw(pBuffer, dwBufSize);
+	//dosaveraw(pBuffer, dwBufSize);
 
-	jtprintf("[fream head, before]type %d, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, (%d)\n"
+	/*jtprintf("[fream head, before]type %d, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, (%d)\n"
 											, dwDataType, pBuffer[0], pBuffer[1]
 											, pBuffer[2], pBuffer[3]
 											, pBuffer[4], pBuffer[5]
@@ -592,7 +592,7 @@ void CALLBACK Static_RealDataCallBackEx(LLONG lRealHandle, DWORD dwDataType, BYT
 											, pBuffer[36], pBuffer[37]
 											, pBuffer[38], pBuffer[39]
 											, dwBufSize); 
-
+*/
 
 }
 
@@ -741,7 +741,7 @@ static int dh_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 	if(stm==NULL)
 	{
 		jtprintf("[%s]stm null\n", __FUNCTION__);
-		return INVALID_STREAM_NO;
+		return INVALID_STREAM_NO_FAILED;
 	}
 
 	if(CLIENT_SetRealDataCallBack(stm->playhandle, NULL, 0)==0)
@@ -826,14 +826,14 @@ static int dh_open_audio_stream(struct device *dev, struct stOpenAudioStream_Req
 	chn = (struct dhchannel*)get_channel(&dev->channels, req->Channel);
 	if(chn == NULL)
 	{
-		return INVALID_CHANNEL_NO;
+		return INVALID_CHANNEL_NO_FAILED;
 	}
 
 	//返回正在播放视屏的流
 	struct dhstream *stm = (struct dhstream *)get_special_stream(&chn->chn.streams, playing_stream, NULL);
 	if(stm == NULL)
 	{
-		return INVALID_STREAM_NO;
+		return INVALID_STREAM_NO_FAILED;
 	}
 
 	//using a flag????START_AUDIO  STOP_AUDIO
@@ -870,7 +870,7 @@ static int dh_close_audio_stream(struct device *dev, struct stCloseAudioStream_R
 	if(chn == NULL)
 	{
 		jtprintf("[%s]no channel %d\n", __FUNCTION__, req->Channel);
-		return INVALID_CHANNEL_NO;
+		return INVALID_CHANNEL_NO_FAILED;
 	}
 
 	do_channel(&dev->channels, req->Channel, dh_operator_channel, STOP_AUDIO, NULL);
@@ -934,11 +934,11 @@ static int dh_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 			struct encode_info* einfo = (struct encode_info*)malloc(sizeof(struct encode_info));
 			if(req->Codec==0)
 			{
-				memcpy(einfo, &dhdev->dev.encodeinfo.encode_info[req->Channel].mainencode, sizeof(struct encode_info));
+				memcpy(einfo, &dhdev->dev.encodeinfo.ch_encode_info[req->Channel].mainencode, sizeof(struct encode_info));
 			}
 			else
 			{
-				memcpy(einfo, &dhdev->dev.encodeinfo.encode_info[req->Channel].sub1encode, sizeof(struct encode_info));
+				memcpy(einfo, &dhdev->dev.encodeinfo.ch_encode_info[req->Channel].sub1encode, sizeof(struct encode_info));
 			}
 
 			rsp->Config = (char*)einfo;

@@ -1,35 +1,11 @@
 #ifndef FRONTDEVICE_H
 #define FRONTDEVICE_H
 
-#ifdef WIN32 //windows platform
-
-#ifdef FRONT_USER_MODULE_EXPORTS
-#define FRONT_API __declspec(dllexport)
-#else
-#define FRONT_API __declspec(dllimport)
-#endif
-
-#ifndef CALL_TYPE
-#define CALL_TYPE	__stdcall  //__cdecl
-#endif
-
-#else //linux platform
-
-#ifndef FRONT_API
-#define FRONT_API
-#endif
-#ifndef CALL_TYPE
-#define CALL_TYPE
-#endif
-
-#endif
+#include "devicetype.h"
 
 #include "command.h"
 #include "list.h"
 #include "plugerror.h"
-#include "devicetype.h"
-
-
 
 #include "seansinglebuf.h"
 

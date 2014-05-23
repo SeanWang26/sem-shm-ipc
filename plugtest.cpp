@@ -1,18 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <execinfo.h>
 #include <assert.h>
 
 #include <pthread.h>
 #include "create_detached_thread.h"
 #include "usersdk.h"
-#include <signal.h>
 
-int stream_callback(int _callback_type, void* _data, void** _user)
+#include "jtsimplestackback.h"
+
+int JT_CALL_TYPE stream_callback(int _callback_type, void* _data, void** _user)
 {
 	struct st_stream_data* data = (struct st_stream_data*)_data;
-	void* user = (void*)*_user;
+	int* user = (int*)*_user;
 	
 	//printf("stream_callback, data = %p, user %p\n", data, user);
 
@@ -29,7 +29,7 @@ int stream_callback(int _callback_type, void* _data, void** _user)
 		//printf("[stream_callback]alarm stream %s\n", __TIME__);
 	}
 	else if(CALLBACK_TYPE_VIDEO_STREAM_CLOSEED==_callback_type)
-	{	
+	{
 		//关闭视频流的操作
 		printf("[stream_callback]close video stream callback user %p\n", user);
 		if(user)
@@ -77,11 +77,10 @@ int stream_callback(int _callback_type, void* _data, void** _user)
 }
 
 void* handle= NULL;
-//int devtype = DEVICE_HK;
+
+int devtype = DEVICE_HK;
 //int devtype = DEVICE_DH;
-int devtype = DEVICE_XM;
-
-
+//int devtype = DEVICE_XM;
 
 void* func(void *)
 {
@@ -100,7 +99,7 @@ void* func(void *)
 		printf("jt_create_device %d ok, %p\n", devtype, handle);
 	}
 
-	struct stLogin_Req req = {{"192.168.3.71"}, 34567, {"admin"}, {""}, NULL};
+	struct stLogin_Req req = {{"192.168.3.152"}, 8000, {"admin"}, {"12345"}, NULL};
 	struct stLogin_Rsp rsp;
 	ret = jt_login(handle, &req, &rsp);
 	if(ret)
@@ -131,12 +130,13 @@ void* func(void *)
 		struct stOpenVideoStream_Rsp rsp2;
 		jt_open_video_stream(handle, &req2, &rsp2);
 
-		/*struct stOpenAlarmStream_Req req3;
+		struct stOpenAlarmStream_Req req3;
 		struct stOpenAlarmStream_Rsp rsp3;
 		req3.Callback = stream_callback;
 		req3.UserData = new int(2);
 		jt_open_alarm_stream(handle, &req3, &rsp3);
 
+/*
 		struct stOpenAudioStream_Req req5;
 		struct stOpenAudioStream_Rsp rsp5;
 		req5.DeviceHandle = (long long)handle;
@@ -146,7 +146,7 @@ void* func(void *)
 		//jt_open_audio_stream(handle, &req5, &rsp5);
 */
 
-		sleep(5);
+		while(1)sleep(5000);
 
 		//关闭视频流
 		struct stCloseVideoStream_Req req4;
@@ -164,106 +164,22 @@ void* func(void *)
 
 	return NULL;
 }
-void ShowSignalType(int value)
-{
-	switch(value)
-	{
-		case 2:
-			printf("\n SIGINT : 点击了Ctrl+C 关闭\n");
-		break;
-		case 3:
-			printf("\n SIGQUIT \n");
-		break;
-		case 8:
-			printf("\n SIGFPE : 浮点异常\n");
-		break;
-		case 9:
-			printf("\n SIGKILL \n");
-		break;
-		case 11:
-			printf("\n SIGSEGV : 段错误\n");
-		break;
-		case 13:
-			printf("\n SIGPIPE : 管道异常\n");
-		break;
-		case 15:
-			printf("\n SIGTERM : 被另一个进程关闭\n");
-		break;
-		default:
-			printf("\n Unknow type %d \n", value);
-	}
-	
-}
-
-void HandleException(int value)
-{
-	printf("\n#########handle_exception  catch ERROR %d ,"
-		" show use $kill -l  #########\n",value);
-	void *stack_p[10];
-	char **stack_info;
-	int size = 0;
-	char strKillTheSamePortLnvrCmd[255];
-
-	ShowSignalType(value);
-	
-	size = backtrace(stack_p, sizeof(stack_p));
-	stack_info = backtrace_symbols(stack_p, size);
-	
-	printf("%d stack frames.\n", size);
-
-	for(int i = 0; i < size; i++)
-	{
-		printf ("%s\n", stack_info[i]);
-	}
-
-	//在守护里再输出
-	fprintf(stderr, "\n#########handle_exception  catch ERROR %d ,"
-		" show use $kill -l  #########\n",value);
-	fprintf(stderr, "%d 行 stack frames.\n", size);
-	
-	for(int i = 0; i < size; i++)
-	{
-		fprintf(stderr,"%s\n", stack_info[i]);
-	}
-
-	if(stack_info)
-	{
-		free(stack_info);
-		stack_info = NULL;
-	}
-
-	//ShowMemInfo();
-	fflush(stdout);
-
-	if(value == SIGINT || value == SIGQUIT
-		|| value == SIGFPE || value == SIGKILL
-		|| value == SIGSEGV || value == SIGTERM)
-	{	
-		//printf("kill -9 $(lsof -i:%d | sed -n '2p' | awk '{print $2}') \n", gLoginPort);
-		//sprintf(strKillTheSamePortLnvrCmd, "kill -9 $(lsof -i:%d | sed -n '2p' | awk '{print $2}')", gLoginPort);
-		//system(strKillTheSamePortLnvrCmd);
-		assert(false);
-	}
-	
-}
 
 int main(int argc, char** argv)
 {
-	printf("time %s\n", __TIME__);
 
-	pthread_t tid; 
+#ifdef _LP64
+	printf("%s, time %s, 64bit system\n", argv[0], __TIME__);
+#else
+	printf("%s, time %s, 32bit system\n", argv[0], __TIME__);
+#endif
 
-	signal(SIGQUIT, HandleException);
-	signal(SIGKILL, HandleException);
-	signal(SIGFPE, HandleException);
-	signal(SIGSEGV, HandleException);
-	signal(SIGTERM,HandleException);
-	signal(SIGPIPE, SIG_IGN);
+	needshowstackbackwhencrack();
 
-	
+	pthread_t tid;
 	create_detached_thread(&tid, func, NULL);
 	//func(NULL);
 
-	sleep(20000);
+	while(1)sleep(20000);
 	return 0;
 }

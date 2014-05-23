@@ -8,6 +8,8 @@ struct hkdevice
 {
 	struct device 	dev;
 	long 			loginid;
+
+	LONG			alarmhandle;//				±¨¾¯¾ä±ú
 	long			voicehandle;//				¶Ô½²¾ä±ú
 	NET_DVR_DEVICEINFO_V30 info;
 };
@@ -27,7 +29,9 @@ struct hkstream
 extern "C" int hk_lib_init();
 extern "C" struct hkdevice *hk_alloc_device(void);
 
+#define HK_INVALIDE_HANDLE     -1
 #define HK_INVALIDE_LOGINID    -1
+#define HK_INVALIDE_PLAYHANDLE -1
 #define HK_INVALIDE_PLAYHANDLE -1
 
 #endif

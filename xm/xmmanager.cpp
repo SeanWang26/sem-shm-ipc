@@ -55,7 +55,7 @@ static struct device_ops xm_ops =
 	xm_send_talk_data
 };
 
-void xm_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
+void CALL_METHOD xm_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
 {
 	FIND_DEVICE_BEGIN(struct xmdevice,DEVICE_XM)
 	{
@@ -322,7 +322,7 @@ static inline int xm_handle_alarm(xmdevice *device, char *pBuf, unsigned long dw
 	SDK_AlarmInfo alarmInfo;
 	memcpy (&alarmInfo, pBuf, dwBufLen); 	
 
-	int reason = 0;
+	int reason = ALARM_TYPE_UNKNOWN;
 	if ( SDK_EVENT_CODE_NET_ALARM == alarmInfo.iEvent 
 		|| SDK_EVENT_CODE_MANUAL_ALARM == alarmInfo.iEvent 
 		|| SDK_EVENT_CODE_LOCAL_ALARM == alarmInfo.iEvent )
@@ -355,14 +355,17 @@ static inline int xm_handle_alarm(xmdevice *device, char *pBuf, unsigned long dw
 		jtprintf("[%s]SDK_EVENT_CODE_LOW_SPACE\n", __FUNCTION__);
 	}
 	
-	if(reason==0)
+	if(reason==ALARM_TYPE_UNKNOWN)
+	{
+		jtprintf("[%s]reason==ALARM_TYPE_UNKNOWN\n", __FUNCTION__);
 		return 0;
+	}
 	
 	st_stream_data alarm;
 	alarm.streamtype = ALARM_STREAM_DATA;
 	alarm.stream_info.alarm_stream_info.reason = reason;
 	alarm.stream_info.alarm_stream_info.channelid = 0;
-	
+
 	if(device->dev.alarmcallback)
 		device->dev.alarmcallback(CALLBACK_TYPE_ALARM_STREAM, &alarm, &device->dev.alarmuserdata);
 

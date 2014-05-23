@@ -2,12 +2,12 @@
 #include "usersdk.h"
 #include "jtprintf.h"
 
-int CALL_TYPE jt_init(void* data)
+int JT_CALL_TYPE jt_init(void* data)
 {
 	return gloal_init();
 }
 
-void* CALL_TYPE jt_create_device(unsigned int type)
+void* JT_CALL_TYPE jt_create_device(unsigned int type)
 {
 	//没有就创建一个
 	struct device* dev = (struct device*)alloc_device(type);
@@ -23,7 +23,7 @@ void* CALL_TYPE jt_create_device(unsigned int type)
 
 	return dev;
 }
-int CALL_TYPE jt_distory_device(void* handle)
+int JT_CALL_TYPE jt_distory_device(void* handle)
 {
 	unique_lock_devicelist(__FUNCTION__);
 	struct device *dev = remove_device((struct device *)handle);
@@ -38,7 +38,7 @@ int CALL_TYPE jt_distory_device(void* handle)
 	return 0;
 }
 
-int CALL_TYPE jt_login(void* handle, struct stLogin_Req *req, struct stLogin_Rsp *rsp)
+int JT_CALL_TYPE jt_login(void* handle, struct stLogin_Req *req, struct stLogin_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	struct device* dev = get_device((struct device*)handle); 
@@ -51,7 +51,7 @@ int CALL_TYPE jt_login(void* handle, struct stLogin_Req *req, struct stLogin_Rsp
 	unlock_devicelist(__FUNCTION__);
 	return -1;
 }
-int CALL_TYPE jt_login_ex(void* handle, int type, struct stLogin_Req *req, struct stLogin_Rsp *rsp)
+int JT_CALL_TYPE jt_login_ex(void* handle, int type, struct stLogin_Req *req, struct stLogin_Rsp *rsp)
 {
 	if(handle==NULL && type)
 	{
@@ -91,7 +91,7 @@ int CALL_TYPE jt_login_ex(void* handle, int type, struct stLogin_Req *req, struc
 
 }
 
-int CALL_TYPE jt_logout(void* handle, struct stLogout_Req *req, struct stLogout_Rsp *rsp)
+int JT_CALL_TYPE jt_logout(void* handle, struct stLogout_Req *req, struct stLogout_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 
@@ -106,7 +106,7 @@ int CALL_TYPE jt_logout(void* handle, struct stLogout_Req *req, struct stLogout_
 	return DEVICE_NO_FOUND;
 }
 
-int CALL_TYPE jt_logout_ex(void* handle, struct stLogout_Req *req, struct stLogout_Rsp *rsp)
+int JT_CALL_TYPE jt_logout_ex(void* handle, struct stLogout_Req *req, struct stLogout_Rsp *rsp)
 {
 	unique_lock_devicelist(__FUNCTION__);
 
@@ -128,7 +128,7 @@ int CALL_TYPE jt_logout_ex(void* handle, struct stLogout_Req *req, struct stLogo
 	return DEVICE_NO_FOUND;
 }
 
-int CALL_TYPE jt_open_video_stream(void* handle, struct stOpenVideoStream_Req *req, struct stOpenVideoStream_Rsp *rsp)
+int JT_CALL_TYPE jt_open_video_stream(void* handle, struct stOpenVideoStream_Req *req, struct stOpenVideoStream_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	struct device *dev = get_device((struct device *)handle);
@@ -144,7 +144,7 @@ int CALL_TYPE jt_open_video_stream(void* handle, struct stOpenVideoStream_Req *r
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_close_video_stream(void* handle, struct stCloseVideoStream_Req *req, struct stCloseVideoStream_Rsp *rsp)
+int JT_CALL_TYPE jt_close_video_stream(void* handle, struct stCloseVideoStream_Req *req, struct stCloseVideoStream_Rsp *rsp)
 {
 	//not safe
 	jtprintf("[jt_close_video_stream]enter\n");
@@ -173,7 +173,7 @@ int CALL_TYPE jt_close_video_stream(void* handle, struct stCloseVideoStream_Req 
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_open_audio_stream(void* handle, struct stOpenAudioStream_Req *req, struct stOpenAudioStream_Rsp *rsp)
+int JT_CALL_TYPE jt_open_audio_stream(void* handle, struct stOpenAudioStream_Req *req, struct stOpenAudioStream_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	struct device *dev = get_device((struct device *)handle);
@@ -187,7 +187,7 @@ int CALL_TYPE jt_open_audio_stream(void* handle, struct stOpenAudioStream_Req *r
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_close_audio_stream(void* handle, struct stCloseAudioStream_Req *req, struct stCloseAudioStream_Rsp *rsp)
+int JT_CALL_TYPE jt_close_audio_stream(void* handle, struct stCloseAudioStream_Req *req, struct stCloseAudioStream_Rsp *rsp)
 {
 	//jtprintf("[jt_close_audio_stream]jt_close_audio_stream chn %p, dev %p\n", chn, dev);
 	struct channel* chn = (struct channel*)handle;
@@ -211,7 +211,7 @@ int CALL_TYPE jt_close_audio_stream(void* handle, struct stCloseAudioStream_Req 
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_get_config(void* handle, struct stGetConfig_Req *req, struct stGetConfig_Rsp *rsp)
+int JT_CALL_TYPE jt_get_config(void* handle, struct stGetConfig_Req *req, struct stGetConfig_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	struct device *dev = get_device((struct device *)handle);
@@ -225,7 +225,7 @@ int CALL_TYPE jt_get_config(void* handle, struct stGetConfig_Req *req, struct st
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_set_config(void* handle, struct stSetConfig_Req *req, struct stSetConfig_Rsp *rsp)
+int JT_CALL_TYPE jt_set_config(void* handle, struct stSetConfig_Req *req, struct stSetConfig_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	struct device *dev = get_device((struct device *)handle);
@@ -239,7 +239,7 @@ int CALL_TYPE jt_set_config(void* handle, struct stSetConfig_Req *req, struct st
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_open_alarm_stream(void* handle, struct stOpenAlarmStream_Req *req, struct stOpenAlarmStream_Rsp *rsp)
+int JT_CALL_TYPE jt_open_alarm_stream(void* handle, struct stOpenAlarmStream_Req *req, struct stOpenAlarmStream_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	struct device *dev = get_device((struct device *)handle);
@@ -253,7 +253,7 @@ int CALL_TYPE jt_open_alarm_stream(void* handle, struct stOpenAlarmStream_Req *r
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_close_alarm_stream(void* handle, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Rsp *rsp)
+int JT_CALL_TYPE jt_close_alarm_stream(void* handle, struct stCloseAlarmStream_Req *req, struct stCloseAlarmStream_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	struct device *dev = get_device((struct device *)handle);
@@ -273,7 +273,7 @@ int CALL_TYPE jt_close_alarm_stream(void* handle, struct stCloseAlarmStream_Req 
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_ptz_control(void* handle, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp)
+int JT_CALL_TYPE jt_ptz_control(void* handle, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	struct device *dev = get_device((struct device *)handle);
@@ -293,7 +293,7 @@ int CALL_TYPE jt_ptz_control(void* handle, struct stPTZControl_Req *req, struct 
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_set_system_time(void* handle, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp)
+int JT_CALL_TYPE jt_set_system_time(void* handle, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	
@@ -308,7 +308,7 @@ int CALL_TYPE jt_set_system_time(void* handle, struct stSetTime_Req *req, struct
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_start_talk(void* handle, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp)
+int JT_CALL_TYPE jt_start_talk(void* handle, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	
@@ -323,7 +323,7 @@ int CALL_TYPE jt_start_talk(void* handle, struct stStartTalk_Req *req, struct st
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
-int CALL_TYPE jt_stop_talk(void* handle, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp)
+int JT_CALL_TYPE jt_stop_talk(void* handle, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp)
 {
 	share_lock_devicelist(__FUNCTION__);
 	

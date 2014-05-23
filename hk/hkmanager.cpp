@@ -103,79 +103,7 @@ static int dosaveraw( unsigned char* data, DWORD len)
 	return fwrite(data,len,1,fp);
 }
 
-static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, void* pUser)
-{
-	struct hkstream* stream = (struct hkstream*)pUser;
-	
-	jtprintf("[%s]type %2d, size %5u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
-		, __FUNCTION__, dwDataType, dwBufSize
-		, pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3] ,pBuffer[4]
-		, pBuffer[5], pBuffer[6], pBuffer[7], pBuffer[8] ,pBuffer[9]
-		, pBuffer[10], pBuffer[11], pBuffer[12], pBuffer[13] , pBuffer[14]
-		, pBuffer[15], pBuffer[16], pBuffer[17], pBuffer[18] , pBuffer[19]);
-
-	//dosaveraw(pBuffer, dwBufSize);
-
-	if(dwDataType == NET_DVR_STREAMDATA)
-	{
-		st_stream_data stmdata;
-		stmdata.streamtype = VIDEO_STREAM_DATA;
-		stmdata.pdata= (char*)pBuffer;
-		stmdata.datalen = dwBufSize;
-		stmdata.stream_info.video_stream_info.encode = stream->currentencode;
-		//stmdata.stream_info.video_stream_info.frametype = hk_pack_type_convert((enum MEDIA_PACK_TYPE)pFrame->nPacketType);
-		//stmdata.stream_info.video_stream_info.width = pFrame->dwPacketSize;
-		//stmdata.stream_info.video_stream_info.height = pFrame->dwPacketSize;
-		stmdata.stream_info.video_stream_info.fps = 0;
-		stmdata.stream_info.video_stream_info.bitrate = 0;
-		stmdata.year = 2014;
-		stmdata.month = 1;
-		stmdata.day = 1;
-		stmdata.hour = 1;
-		stmdata.minute = 1;
-		stmdata.second = 1;
-
-		struct timespec ts;
-		clock_gettime(CLOCK_REALTIME, &ts);
-		if(stream->stm.llbegintime==0ULL)
-		{
-			stmdata.llbegintime = ts.tv_sec* + ts.tv_nsec/100;//100ns
-			stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100;//100ns
-		}
-		else
-		{
-			stmdata.llbegintime = stream->stm.llbegintime;
-			stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100 - stmdata.llbegintime;//100ns
-		}
-
-		if(stream->stm.callback)
-			stream->stm.callback(CALLBACK_TYPE_VIDEO_STREAM, &stmdata, &stream->stm.userdata);
-
-		return;
-	}
-	else if(dwDataType == NET_DVR_AUDIOSTREAMDATA)
-	{
-		jtprintf("[%s]AUDIO_PACKET %d\n", __FUNCTION__, stream->stm.id);
-		return;
-	}
-	else if(dwDataType == NET_DVR_SYSHEAD)
-	{
-		jtprintf("[%s]NET_DVR_SYSHEAD stm id %d\n", __FUNCTION__, stream->stm.id);
-		return;
-	}
-	else if(NET_DVR_PRIVATE_DATA == dwDataType)
-	{
-		jtprintf("[%s]NET_DVR_PRIVATE_DATA stm id %d\n", __FUNCTION__, stream->stm.id);
-		return;
-	}
-
-	// it must return TRUE if decode successfully,or the SDK will consider the decode is failed
-	return;
-}
-
-
 #pragma pack(1)
-
 struct hk_ps_pack_start_code  
 {
     unsigned char start_code[3];  
@@ -195,10 +123,7 @@ struct hk_ps_program_stream_e
     char                PackInfo1[2];  
     unsigned char       stuffing_length;  
 };
-
-
 #pragma pack()
-
 
 //只适用于流表示为0xe?的部分
 inline unsigned int move_to_video_payload_data(BYTE *indata, unsigned int indatalen, BYTE **outdata, unsigned int *outdatalen)
@@ -220,19 +145,18 @@ inline unsigned int move_to_video_payload_data(BYTE *indata, unsigned int indata
     return *outdatalen;  
 }
 
-static void CALLBACK hk_standard_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, DWORD pUser)
+#if 1
+static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, void* pUser)
 {
-	//创建一个线程局部变量,标识pulling,   todo.............
-
 	struct hkstream* stream = (struct hkstream*)pUser;
 	
-	/*jtprintf("[%s]type %d, size %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+	jtprintf("[%s]type %d, size %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
 		, __FUNCTION__, dwDataType, dwBufSize
 		, pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3] ,pBuffer[4]
 		, pBuffer[5], pBuffer[6], pBuffer[7], pBuffer[8] ,pBuffer[9]
 		, pBuffer[10], pBuffer[11], pBuffer[12], pBuffer[13] , pBuffer[14]
 		, pBuffer[15], pBuffer[16], pBuffer[17], pBuffer[18] , pBuffer[19]);
-	*/
+	
 
 	if(dwDataType == NET_DVR_STREAMDATA)
 	{
@@ -245,8 +169,8 @@ static void CALLBACK hk_standard_real_data_callback_v2(LONG lPlayHandle, DWORD d
 			unsigned int vdatalen = 0;
 			if(read_from_singlebuf(&stream->stm.videobuf, &vdata, &vdatalen))
 			{
-				jtprintf("[%s]read_from_singlebuf data %p, len %d\n"
-					, __FUNCTION__, vdata, vdatalen);
+				//jtprintf("[%s]read_from_singlebuf data %p, len %d\n"
+				//	, __FUNCTION__, vdata, vdatalen);
 
 				//dosaveraw(vdata, vdatalen);
 			}
@@ -346,6 +270,134 @@ static void CALLBACK hk_standard_real_data_callback_v2(LONG lPlayHandle, DWORD d
 	// it must return TRUE if decode successfully,or the SDK will consider the decode is failed
 	return;
 }
+#endif
+
+#if 1
+static void CALLBACK hk_standard_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, DWORD pUser)
+{
+	//创建一个线程局部变量,标识pulling,   todo.............
+	struct hkstream* stream = (struct hkstream*)pUser;
+	
+	/*jtprintf("[%s]type %d, size %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+		, __FUNCTION__, dwDataType, dwBufSize
+		, pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3] ,pBuffer[4]
+		, pBuffer[5], pBuffer[6], pBuffer[7], pBuffer[8] ,pBuffer[9]
+		, pBuffer[10], pBuffer[11], pBuffer[12], pBuffer[13] , pBuffer[14]
+		, pBuffer[15], pBuffer[16], pBuffer[17], pBuffer[18] , pBuffer[19]);
+	*/
+	if(dwDataType == NET_DVR_STREAMDATA)
+	{
+		struct hk_ps_pack_start_code *startcode = (struct hk_ps_pack_start_code *)pBuffer;
+		if(startcode->stream_id[0] == 0xba)
+		{
+			//jtprintf("[%s]new packet\n", __FUNCTION__);
+
+			unsigned char* vdata = NULL;
+			unsigned int vdatalen = 0;
+			if(read_from_singlebuf(&stream->stm.videobuf, &vdata, &vdatalen))
+			{
+				//jtprintf("[%s]read_from_singlebuf data %p, len %d\n"
+				//	, __FUNCTION__, vdata, vdatalen);
+
+				//dosaveraw(vdata, vdatalen);
+			}
+
+			clear_singlebuf(&stream->stm.videobuf);
+		}
+		else if((startcode->stream_id[0] & 0xf0) == 0xe0)
+		{
+			//jtprintf("[%s]video pes\n", __FUNCTION__);
+
+			unsigned char* vdata = NULL;
+			unsigned int vdatalen = 0;	
+
+			if(move_to_video_payload_data(pBuffer, dwBufSize, &vdata, &vdatalen))
+			{
+				write_to_singlebuf(&stream->stm.videobuf, vdata, vdatalen);
+			}
+		}
+
+		st_stream_data stmdata;
+		stmdata.streamtype = VIDEO_STREAM_DATA;
+		stmdata.pdata= (char*)pBuffer;
+		stmdata.datalen = dwBufSize;
+		stmdata.stream_info.video_stream_info.encode = stream->currentencode;
+		//stmdata.stream_info.video_stream_info.frametype = hk_pack_type_convert((enum MEDIA_PACK_TYPE)pFrame->nPacketType);
+		//stmdata.stream_info.video_stream_info.width = pFrame->dwPacketSize;
+		//stmdata.stream_info.video_stream_info.height = pFrame->dwPacketSize;
+		stmdata.stream_info.video_stream_info.fps = 0;
+		stmdata.stream_info.video_stream_info.bitrate = 0;
+		stmdata.year = 2014;
+		stmdata.month = 1;
+		stmdata.day = 1;
+		stmdata.hour = 1;
+		stmdata.minute = 1;
+		stmdata.second = 1;
+
+		struct timespec ts;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		if(stream->stm.llbegintime==0ULL)
+		{
+			stmdata.llbegintime = ts.tv_sec* + ts.tv_nsec/100;//100ns
+			stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100;//100ns
+		}
+		else
+		{
+			stmdata.llbegintime = stream->stm.llbegintime;
+			stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100 - stmdata.llbegintime;//100ns
+		}
+
+		if(stream->stm.callback)
+			stream->stm.callback(CALLBACK_TYPE_VIDEO_STREAM, &stmdata, &stream->stm.userdata);
+
+		return;
+	}
+	else if(dwDataType == NET_DVR_AUDIOSTREAMDATA)
+	{
+		jtprintf("[%s]AUDIO_PACKET %d\n", __FUNCTION__, stream->stm.id);
+
+		//jtprintf("[%s]AUDIO_PACKET %d\n", __FUNCTION__, stream->stm.id);
+		struct channel* chn = (struct channel*)stream->stm.obj.parent;
+		struct device* dev = (struct device*)chn->obj.parent;
+
+		if(chn->audiocallback)// && chn->audiouserdata)
+		{
+			st_stream_data stmdata;
+			stmdata.streamtype = AUDIO_STREAM_DATA;
+			stmdata.pdata= (char*)pBuffer;
+			stmdata.datalen = dwBufSize;
+			stmdata.stream_info.audio_stream_info.encode = dev->encodeinfo.ch_encode_info[chn->id].audioencode.encodetype;
+			stmdata.stream_info.audio_stream_info.channel = dev->encodeinfo.ch_encode_info[chn->id].audioencode.channel;
+			stmdata.stream_info.audio_stream_info.frequency = dev->encodeinfo.ch_encode_info[chn->id].audioencode.frequency;
+			stmdata.stream_info.audio_stream_info.depth = dev->encodeinfo.ch_encode_info[chn->id].audioencode.depth;
+			stmdata.stream_info.audio_stream_info.bitrate = dev->encodeinfo.ch_encode_info[chn->id].audioencode.bitrate;
+			stmdata.year = 2014;
+			stmdata.month = 1;
+			stmdata.day = 1;
+			stmdata.hour = 1;
+			stmdata.minute = 1;
+			stmdata.second = 1;
+
+			chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM, &stmdata, &chn->audiouserdata);
+		}
+
+		return;
+	}
+	else if(dwDataType == NET_DVR_SYSHEAD)
+	{
+		jtprintf("[%s]NET_DVR_SYSHEAD stm id %d\n", __FUNCTION__, stream->stm.id);
+		return;
+	}
+	else if(NET_DVR_PRIVATE_DATA == dwDataType)
+	{
+		jtprintf("[%s]NET_DVR_PRIVATE_DATA stm id %d\n", __FUNCTION__, stream->stm.id);
+		return;
+	}
+
+	// it must return TRUE if decode successfully,or the SDK will consider the decode is failed
+	return;
+}
+#endif
 
 void hk_audio_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, char byAudioFlag, long dwUser)
 {
@@ -498,6 +550,93 @@ static void CALLBACK hk_mess_callback(DWORD dwType, LONG lUserID, LONG lHandle, 
 				break;
 			}
 		}
+	}
+}
+
+static int hk_alarm_type_convert(unsigned int type)
+{
+	jtprintf("[%s]hk type %u\n", __FUNCTION__, type);
+	switch(type)
+	{
+		case 2:
+			return ALARM_TYPE_VIDEO_LOSS;
+		case 3:
+			return ALARM_TYPE_VIDEO_MOTION;
+		case 6:
+			return ALARM_TYPE_VIDEO_BLIND;
+		default:
+			break ;
+	}
+
+	jtprintf("[%s]ALARM_TYPE_UNKNOWN\n", __FUNCTION__);
+	return ALARM_TYPE_UNKNOWN;
+}
+
+static void CALLBACK hk_alarm_callback(LONG lCommand, NET_DVR_ALARMER *pAlarmer, char *pAlarmInfo, DWORD dwBufLen, void* pUser)
+{
+	struct hkdevice* hkdev = (struct hkdevice*)pUser;
+	//printf("lCommand is %d, alarm type is %d\n", lCommand, struAlarmInfo.dwAlarmType);
+	switch(lCommand) 
+	{
+		case COMM_ALARM_V30:
+		{
+			jtprintf("[%s]COMM_ALARM above v3.0\n", __FUNCTION__);
+
+			NET_DVR_ALARMINFO_V30 struAlarmInfo;
+			memcpy(&struAlarmInfo, pAlarmInfo, sizeof(NET_DVR_ALARMINFO_V30));
+
+			st_stream_data alarm;
+			alarm.streamtype = ALARM_STREAM_DATA;
+			alarm.stream_info.alarm_stream_info.reason = hk_alarm_type_convert(struAlarmInfo.dwAlarmType);
+			if(alarm.stream_info.alarm_stream_info.reason != ALARM_TYPE_UNKNOWN)
+			{
+				for (int i=0; i<MAX_CHANNUM; i++)	//#define MAX_CHANNUM	16	//最大通道数
+				{
+					if (struAlarmInfo.byChannel[i] == 1)
+					{
+						if(hkdev->dev.alarmcallback)
+						{
+							alarm.stream_info.alarm_stream_info.channelid = i;
+							
+							if(hkdev->dev.alarmcallback)
+								hkdev->dev.alarmcallback(CALLBACK_TYPE_ALARM_STREAM, &alarm, &hkdev->dev.alarmuserdata);		
+						}
+					}
+				}
+			}
+		}
+		break;
+		case COMM_ALARM:
+		{	
+			jtprintf("[%s]COMM_ALARM below v3.0\n", __FUNCTION__);
+			NET_DVR_ALARMINFO struAlarmInfo;
+			memcpy(&struAlarmInfo, pAlarmInfo, sizeof(NET_DVR_ALARMINFO_V30));
+
+			st_stream_data alarm;
+			alarm.streamtype = ALARM_STREAM_DATA;
+			alarm.stream_info.alarm_stream_info.reason = hk_alarm_type_convert(struAlarmInfo.dwAlarmType);
+			if(alarm.stream_info.alarm_stream_info.reason != ALARM_TYPE_UNKNOWN)
+			{
+				for (int i=0; i<MAX_CHANNUM; i++)	//#define MAX_CHANNUM	16	//最大通道数
+				{
+					if (struAlarmInfo.dwChannel[i] == 1)
+					{
+						if(hkdev->dev.alarmcallback)
+						{
+							alarm.stream_info.alarm_stream_info.channelid = i;
+							
+							if(hkdev->dev.alarmcallback)
+								hkdev->dev.alarmcallback(CALLBACK_TYPE_ALARM_STREAM, &alarm, &hkdev->dev.alarmuserdata);		
+						}
+					}
+				}
+			}
+
+			break;
+		}
+		default:
+			jtprintf("[%s]lCommand %d, not handle it\n", __FUNCTION__, lCommand);
+		break;
 	}
 }
 
@@ -800,7 +939,7 @@ static int hk_bitrate_convert(DWORD bitrate)
 
 static int hk_fps_convert(int bitrate)
 {
-	return 0;
+	return bitrate;
 }
 
 int hk_audio_encode_convert(int type)
@@ -831,7 +970,7 @@ static int hk_fill_ch_encode_info(struct device* dev, int channel, NET_DVR_COMPR
 	//主
 	dev->encodeinfo.ch_encode_info[channel].mainencode.enable = 1;
 	dev->encodeinfo.ch_encode_info[channel].mainencode.encodetype = hk_get_encode_mode(EncodeConfig->struNormHighRecordPara.byVideoEncType);
-	dev->encodeinfo.ch_encode_info[channel].mainencode.fps = EncodeConfig->struNormHighRecordPara.dwVideoFrameRate;
+	dev->encodeinfo.ch_encode_info[channel].mainencode.fps = hk_fps_convert(EncodeConfig->struNormHighRecordPara.dwVideoFrameRate);
 
 	hk_resolution_convert(EncodeConfig->struNormHighRecordPara.byResolution
 						, &dev->encodeinfo.ch_encode_info[channel].mainencode.width
@@ -845,7 +984,7 @@ static int hk_fill_ch_encode_info(struct device* dev, int channel, NET_DVR_COMPR
 	//辅1
 	dev->encodeinfo.ch_encode_info[channel].sub1encode.enable = 1;
 	dev->encodeinfo.ch_encode_info[channel].sub1encode.encodetype = hk_get_encode_mode(EncodeConfig->struNetPara.byVideoEncType);
-	dev->encodeinfo.ch_encode_info[channel].sub1encode.fps = EncodeConfig->struNetPara.dwVideoFrameRate;
+	dev->encodeinfo.ch_encode_info[channel].sub1encode.fps = hk_fps_convert(EncodeConfig->struNetPara.dwVideoFrameRate);
 	
 	hk_resolution_convert(EncodeConfig->struNetPara.byResolution
 						, &dev->encodeinfo.ch_encode_info[channel].sub1encode.width
@@ -953,7 +1092,7 @@ static int hk_device_init(struct hkdevice *dev)
 			assert(hkstream->stm.obj.type == OBJECT_TYPE_STREAM);
 
 			hkstream->currentencode = VIDEO_ENCODE_UNKNOW;
-			hkstream->playhandle = HK_INVALIDE_PLAYHANDLE;
+			hkstream->playhandle = HK_INVALIDE_HANDLE;
 
 			stream_init(&hkstream->stm);
 		}
@@ -962,8 +1101,9 @@ static int hk_device_init(struct hkdevice *dev)
 	}
 
 	/////memset(&dev->info, 0, sizeof(dev->info));//清除设备信息
-	dev->voicehandle = 0;
-	dev->loginid = HK_INVALIDE_LOGINID;
+	dev->alarmhandle = HK_INVALIDE_HANDLE;
+	dev->voicehandle = HK_INVALIDE_HANDLE;
+	dev->loginid = HK_INVALIDE_HANDLE;
 
 	device_init(&dev->dev);
 
@@ -1142,9 +1282,13 @@ static int hk_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	///////playstru.byStreamID = 0;
 	playstru.byProtoType = 0;
 
+	//方便用户修改上一次的 userdata数据
+	if(stm->stm.callback)
+		stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM_OPENED, NULL, &stm->stm.userdata);
+
 	//long handle = NET_DVR_RealPlay_V40(hkdev->loginid, &playstru, NULL, NULL);
-	//long handle = NET_DVR_RealPlay_V40(hkdev->loginid, &playstru, hk_real_data_callback_v2, stm);
-	long handle = NET_DVR_RealPlay_V40(hkdev->loginid, &playstru, NULL, NULL);
+	long handle = NET_DVR_RealPlay_V40(hkdev->loginid, &playstru, hk_real_data_callback_v2, stm);
+	//long handle = NET_DVR_RealPlay_V40(hkdev->loginid, &playstru, NULL, NULL);
 	if(handle == -1)
 	{
 		stm->playhandle = HK_INVALIDE_PLAYHANDLE;
@@ -1160,10 +1304,6 @@ static int hk_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 
 		clear_singlebuf(&stm->stm.videobuf);//
 
-		//方便用户修改上一次的 userdata数据
-		if(stm->stm.callback)
-			stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM_OPENED, NULL, &stm->stm.userdata);
-
 		stm->playhandle = handle;
 		stm->stm.pulling = 1;
 		stm->stm.llbegintime = 0;///改为时间?????
@@ -1174,7 +1314,7 @@ static int hk_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 		rsp->StreamHandle = (long)stm;
 		jtprintf("[%s]rsp->StreamHandle %ld\n", __FUNCTION__, rsp->StreamHandle);
 
-		if(NET_DVR_SetRealDataCallBack(handle,hk_standard_real_data_callback_v2,(DWORD)stm))
+		/*if(NET_DVR_SetRealDataCallBack(handle,hk_standard_real_data_callback_v2,(DWORD)stm))
 		//if(NET_DVR_SetStandardDataCallBack(handle, hk_standard_real_data_callback_v2, (DWORD)stm))
 		{
 			jtprintf("[%s]NET_DVR_SetStandardDataCallBack ok\n", __FUNCTION__);
@@ -1183,7 +1323,7 @@ static int hk_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 		{
 			jtprintf("[%s]set video callback failed!, %d\n", __FUNCTION__, NET_DVR_GetLastError());
 			return SET_VIDEO_CALLBACK_FAILED;
-		}
+		}*/
 
 		
 	}
@@ -1449,27 +1589,27 @@ static int hk_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 		jtprintf("[%s]hkdev null\n", __FUNCTION__);
 		return DEVICE_NULL_FAILED;
 	}
-
-	return NOT_IMPLEMENT;
-
-	/*if(H264_DVR_SetupAlarmChan(hkdev->loginid))
+	
+	hkdev->alarmhandle = NET_DVR_SetupAlarmChan_V30(hkdev->loginid);
+	if(HK_INVALIDE_HANDLE==hkdev->alarmhandle)
 	{
-		jtprintf("[%s]hkdev H264_DVR_SetupAlarmChan ok, alarmcallback %p\n", __FUNCTION__, dev->alarmcallback);
+		jtprintf("[%s]hkdev NET_DVR_SetupAlarmChan_V30 failed\n", __FUNCTION__);
+		return OPEN_ALARM_STREAM_FAILED;
+	}
+	else
+	{
+		jtprintf("[%s]hkdev NET_DVR_SetupAlarmChan_V30 ok, alarmcallback %p\n"
+			, __FUNCTION__, dev->alarmcallback);
 		if(dev->alarmcallback)
 			dev->alarmcallback(CALLBACK_TYPE_ALARM_STREAM_OPENED, (void*)SUCCESS, &dev->alarmuserdata);
 
-		jtprintf("[%s]hkdev H264_DVR_SetupAlarmChan ok  22, alarmcallback %p\n"
-			, __FUNCTION__, dev->alarmcallback);
+		//设置报警回调函数
+		NET_DVR_SetDVRMessageCallBack_V30(hk_alarm_callback, hkdev);
 
 		dev->alarmcallback = req->Callback;
 		dev->alarmuserdata = req->UserData;
-		rsp->DeviceHandle = (long long)(unsigned)hkdev;
+		rsp->DeviceHandle = (long long)(unsigned long)hkdev;
 	}
-	else
-	{		
-		jtprintf("[%s]hkdev H264_DVR_SetupAlarmChan failed\n", __FUNCTION__);
-		return OPEN_ALARM_STREAM_FAILED;
-	}*/
 
 	return SUCCESS;
 }
@@ -1507,30 +1647,50 @@ static int  hk_close_alarm_stream(struct device *dev, struct stCloseAlarmStream_
 	return SUCCESS;
 }
 
-/*static PTZ_ControlType hk_ptz_direction_convert(int jtdirection)
+static DWORD hk_ptz_speed_convert(int speed)
+{
+	//将0~100映射到1~7
+	int innerspeed = (7/100.0)*speed+1;
+	jtprintf("[hk_ptz_speed_convert]speed convert to %d\n", speed, innerspeed);
+
+	return innerspeed;
+}
+
+static DWORD hk_ptz_direction_convert(int jtdirection)
 {
 	switch(jtdirection)
 	{
 		case JPTZ_UP:
 			return TILT_UP;
 		case JPTZ_RIGHT_UP:
-			return PAN_RIGTHTOP;
+			return UP_RIGHT;
 		case JPTZ_RIGHT:
 			return PAN_RIGHT;
 		case JPTZ_RIGHT_DOWN:
-			return PAN_RIGTHDOWN;
+			return DOWN_RIGHT;
 		case JPTZ_DOWN:
 			return TILT_DOWN;
 		case JPTZ_LEFT_DOWN:
-			return PAN_LEFTDOWN;
+			return DOWN_LEFT;
 		case JPTZ_LEFT:
 			return PAN_LEFT;
 		case JPTZ_LEFT_UP:
-			return PAN_LEFTTOP;
+			return UP_LEFT;
 	}
 
-	return TILT_UP;
-}*/
+	return TILT_DOWN;
+}
+
+int hk_stream_valid_handle(struct stream *stm, void* data)
+{
+	struct hkstream *hkstm = (struct hkstream *)stm;
+	if(hkstm->playhandle != HK_INVALIDE_HANDLE)
+	{
+		return 1;
+	}
+
+	return 0;
+}
 
 static int hk_ptz_control(struct device * dev, struct stPTZControl_Req *req, struct stPTZControl_Rsp *rsp)
 {
@@ -1542,17 +1702,19 @@ static int hk_ptz_control(struct device * dev, struct stPTZControl_Req *req, str
 		, __FUNCTION__, dev->ip, dev->port, req->Channel, req->Action, req->Speed);
 
 	hkdevice *hkdev = (hkdevice *)dev;
+	struct hkchannel* chn = (struct hkchannel* ) get_channel(&hkdev->dev.channels, req->Channel);
 
-	return NOT_IMPLEMENT;
-	
-	/*switch(req->Action)
+	//随便一个handle不为HK_INVALIDE_HANDLE的流handle
+	struct hkstream* stm = (struct hkstream*)get_special_stream(&chn->chn.streams, hk_stream_valid_handle, NULL);
+
+	switch(req->Action)
 	{
 		case JPTZ_STOP://停止
 		
 			jtprintf("[%s]ip %s, port %u, Channel %d, Action %u, Speed %d\n"
 			, __FUNCTION__, dev->ip, dev->port, req->Channel, req->Action, req->Speed);
-			
-			NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, 0, 1, 0);
+
+			NET_DVR_PTZControlWithSpeed(stm->playhandle, hk_ptz_direction_convert(req->Action), 1, 0);
 		break;
 		case JPTZ_UP://8个方向
 		case JPTZ_RIGHT_UP:
@@ -1562,61 +1724,63 @@ static int hk_ptz_control(struct device * dev, struct stPTZControl_Req *req, str
 		case JPTZ_LEFT_DOWN:
 		case JPTZ_LEFT:
 		case JPTZ_LEFT_UP:
-			if(!NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, hk_ptz_direction_convert(req->Action), 0, req->Speed))
-			{
 
-			}			
+			jtprintf("[%s]ip %s, port %u, Channel %d, Action %u, Speed %d\n"
+			, __FUNCTION__, dev->ip, dev->port, req->Channel, req->Action, req->Speed);
+
+			NET_DVR_PTZControlWithSpeed(stm->playhandle, hk_ptz_direction_convert(req->Action), 0, hk_ptz_speed_convert(req->Speed));
+				
 		break;
 		case JPTZ_PUSH_FAR://拉远
-			NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, ZOOM_OUT, 0, req->Speed);
+			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, ZOOM_OUT, 0, req->Speed);
 		break;
 		case JPTZ_PULL_NEAR://推近
-			NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, ZOOM_IN, 0, req->Speed);
+			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, ZOOM_IN, 0, req->Speed);
 		break;
 		case JPTZ_IRIS_ADD://光圈加
-			NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, IRIS_OPEN, 0, req->Speed);
+			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, IRIS_OPEN, 0, req->Speed);
 		break;
 		case JPTZ_IRIS_SUB://光圈减
-			NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, IRIS_CLOSE, 0, req->Speed);
+			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, IRIS_CLOSE, 0, req->Speed);
 		break;
 		case JPTZ_FOCUS_FAR://焦距++
-			H264_DVR_PTZControl(hkdev->loginid, req->Channel, FOCUS_FAR, 0, req->Speed);
+			//H264_DVR_PTZControl(hkdev->loginid, req->Channel, FOCUS_FAR, 0, req->Speed);
 		break;
 		case JPTZ_FOCUS_NEAR://焦距--
-			H264_DVR_PTZControl(hkdev->loginid, req->Channel, FOCUS_NEAR, 0, req->Speed);
+			//H264_DVR_PTZControl(hkdev->loginid, req->Channel, FOCUS_NEAR, 0, req->Speed);
 		break;
 		case JSET_PRESET://设置预置点
-			H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_SET_CONTROL, req->PresetNum, 2, 3, 0);
+			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_SET_CONTROL, req->PresetNum, 2, 3, 0);
 		break;
 		case JCLEAR_PRESET://清除预置点
-			H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_DEL_CONTROL, req->PresetNum, 2, 3, 0);
+			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_DEL_CONTROL, req->PresetNum, 2, 3, 0);
 		break;
 		case JGOTO_PRESET://转到预置点
-			H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_MOVE_CONTROL, req->PresetNum, 2, 3, 0);
+			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_MOVE_CONTROL, req->PresetNum, 2, 3, 0);
 		break;
 		case JADD_TO_LOOP://添加预置点到巡航
-			H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_ADDTOLOOP, req->TourNum, req->PresetNum, 3, 0);
+			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_ADDTOLOOP, req->TourNum, req->PresetNum, 3, 0);
 		break;
 		case JDEL_FROM_LOOP://将预置点从巡航删除
-			H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_DELFROMLOOP, req->TourNum, req->PresetNum, 3, 0);
+			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_DELFROMLOOP, req->TourNum, req->PresetNum, 3, 0);
 		break;
 		case JSTART_LOOP://开始巡航
-			H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_LOOP_CONTROL, req->TourNum, 2, 3, 0);
+			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_LOOP_CONTROL, req->TourNum, 2, 3, 0);
 		break;
 		case JSTOP_LOOP://停止巡航
-			H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_STOP_LOOP_CONTROL, req->TourNum, 2, 3, 0);
+			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_STOP_LOOP_CONTROL, req->TourNum, 2, 3, 0);
 		break;
 		case JREMOVE_LOOP://删除巡航
-			H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_CLOSELOOP, req->TourNum, 2, 3, 0);
+			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_CLOSELOOP, req->TourNum, 2, 3, 0);
 		break;
 		case JPTZ_RESET://云台复位
-			H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_OPERATION_RESET, req->PresetNum, 2, 3, 0);
+			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_OPERATION_RESET, req->PresetNum, 2, 3, 0);
 		break;
 		default:
 			jtprintf("[%s]dev %p, PTZ, unkonwn cmd %d\n", __FUNCTION__, dev, req->Action);
 		return UNKONWN_PTZ_COMMAND;
 	}
-*/
+
 	return 0;
 }
 static int hk_set_system_time(struct device *dev, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp)
@@ -1628,7 +1792,7 @@ static int hk_set_system_time(struct device *dev, struct stSetTime_Req *req, str
 	jtprintf("[%s]try set time to %d-%d-%d %d:%d:%d\n"
 		, __FUNCTION__, req->year, req->month, req->day, req->hour, req->minute, req->second);
 
-	hkdevice *hkdev = (hkdevice *)dev;	
+	//hkdevice *hkdev = (hkdevice *)dev;	
 
 	return NOT_IMPLEMENT;
 	/*SDK_SYSTEM_TIME time;

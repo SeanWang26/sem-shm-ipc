@@ -253,8 +253,13 @@ void HandleException(int value)
 #include <time.h>
 int main(int argc, char** argv)
 {
-	jtprintf("frontplug, build time %s, Version %s, %s, sizeof(time_t) %d\n"
+#ifdef _LP64
+		jtprintf("frontplug, build time %s, Version %s, %s, 64bit system, sizeof(time_t) %d\n"
+			, __TIME__ , PlugVerion, argv[0], sizeof(time_t));
+#else
+		jtprintf("frontplug, build time %s, Version %s, %s, 32bit system, sizeof(time_t) %d\n"
 		, __TIME__ , PlugVerion, argv[0], sizeof(time_t));
+#endif
 
 	int exenamelen = strlen(argv[0]);
 	int exetype = 0;
@@ -269,6 +274,10 @@ int main(int argc, char** argv)
 			else if(!memcmp((void*)(&(argv[0][i])+1), "zhdahua_SDK.exe", sizeof("zhdahua_SDK.exe")))
 			{
 				exetype = 3;
+			}
+			else if(!memcmp((void*)(&(argv[0][i])+1), "zhhaikang_SDK.exe", sizeof("zhhaikang_SDK.exe")))
+			{
+				exetype = 4;
 			}
 
 			jtprintf("it is %d\n", exetype);

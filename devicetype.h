@@ -1,6 +1,30 @@
 #ifndef DEVICE_TYPE_H
 #define DEVICE_TYPE_H
 
+#ifdef WIN32 //windows platform
+
+#ifdef JT_FRONT_USER_MODULE_EXPORTS
+#define JT_FRONT_API __declspec(dllexport)
+#else
+#define JT_FRONT_API __declspec(dllimport)
+#endif
+
+#ifndef JT_CALL_TYPE
+#define JT_CALL_TYPE	__stdcall  //__cdecl
+#endif
+
+#else //linux platform
+
+#ifndef JT_FRONT_API
+#define JT_FRONT_API
+#endif
+#ifndef JT_CALL_TYPE
+#define JT_CALL_TYPE
+#endif
+
+#endif
+
+
 //对象定义
 #define OBJECT_TYPE_DEVICE	1
 #define OBJECT_TYPE_CHANNEL	2
@@ -61,6 +85,7 @@
 #define ALARM_TYPE_VIDEO_BLIND                           1002 //遮挡
 #define ALARM_TYPE_INPUT                                 1003 //输入
 #define ALARM_TYPE_STORAGE_NOT_EXIST                     1004 //储存不存在
+#define ALARM_TYPE_UNKNOWN                               9999 //未知
 
 
 enum{JPTZ_UP=0, JPTZ_RIGHT_UP, JPTZ_RIGHT, JPTZ_RIGHT_DOWN, 
@@ -131,10 +156,10 @@ struct st_stream_data
 };
 
 //如果是停止的回调，用户可能会修改*user的值
-typedef int (CALL_TYPE *jt_stream_callback)(int callback_type, void* data, void** user);
+typedef int (JT_CALL_TYPE *jt_stream_callback)(int callback_type, void* data, void** user);
 
 //如果是停止的回调，用户可能会修改*user的值
-typedef void* (*jt_talk_callback)(void* data);
+typedef void* (JT_CALL_TYPE *jt_talk_callback)(void* data);
 
 //回调事件类型
 #define CALLBACK_TYPE_VIDEO_STREAM               1     //视频数据
