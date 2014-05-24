@@ -40,7 +40,7 @@ struct stLogin_Req
 	unsigned int			Port;
 	char					User[32];
 	char					Password[32];
-	void*					EventCallback;
+	jt_stream_callback      EventCallback;
 };
 struct stLogin_Rsp
 {

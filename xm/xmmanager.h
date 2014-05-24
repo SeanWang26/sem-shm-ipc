@@ -2,7 +2,24 @@
 #define XMMANAGER_H
 
 #include "../frontdevice.h"
-#include "netsdk.h"
+
+#if (defined(WIN32) || defined(WIN64))
+	#if (defined(WIN32))
+	#warning "using windows i586 include file"
+	#include "i586/netsdk.h"
+	#else
+	#warning "using windows x64 include file"
+	#include "x64/netsdk.h"
+	#endif
+#else
+	#ifndef _LP64
+	#warning "using linux i586 include file"
+	#include "i586/netsdk.h"
+	#else
+	#warning "using linux x64 include file"
+	#include "x64/netsdk.h"
+	#endif
+#endif
 
 struct xmdevice
 {

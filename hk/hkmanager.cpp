@@ -57,7 +57,7 @@ static struct device_ops hk_ops =
 
 void hk_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
 {
-	FIND_DEVICE_BEGIN(struct hkdevice,DEVICE_XM)
+	FIND_DEVICE_BEGIN(struct hkdevice,DEVICE_HK)
 	{
 		if(dev->loginid == lLoginID)
 		{
@@ -71,7 +71,7 @@ void hk_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsign
 
 /*void hk_sub_disconnect_callBack(long lLoginID, SubConnType type, long nChannel, long dwUser)
 {
-	FIND_DEVICE_BEGIN(struct hkdevice,DEVICE_XM)
+	FIND_DEVICE_BEGIN(struct hkdevice,DEVICE_HK)
 	{
 		if(dev->loginid == lLoginID)
 		{
@@ -405,7 +405,7 @@ void hk_audio_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, ch
 	//struct hkdevice
 
 	
-	/*FIND_DEVICE_BEGIN(struct hkdevice,DEVICE_XM)
+	/*FIND_DEVICE_BEGIN(struct hkdevice,DEVICE_HK)
 	{
 		if(dev->voicehandle == lTalkHandle)
 		{
@@ -496,7 +496,7 @@ static inline int hk_handle_alarm(hkdevice *device, char *pBuf, unsigned long dw
 	LIST_FOR_EACH_ENTRY(device, &devicelist, struct device, entry)
 	{
 		assert(device->obj.type == OBJECT_TYPE_DEVICE);
-		if(!device->deleted && device->ops->type == DEVICE_XM )
+		if(!device->deleted && device->ops->type == DEVICE_HK )
 		{	
 			if(((hkdevice*)device)->loginid == lLoginID)
 			{
@@ -542,7 +542,7 @@ static void CALLBACK hk_mess_callback(DWORD dwType, LONG lUserID, LONG lHandle, 
 	LIST_FOR_EACH_ENTRY(device, &devicelist, struct device, entry)
 	{
 		assert(device->obj.type == OBJECT_TYPE_DEVICE);
-		if(!device->deleted && device->ops->type == DEVICE_XM )
+		if(!device->deleted && device->ops->type == DEVICE_HK )
 		{	
 			if(((hkdevice*)device)->loginid == lUserID)
 			{

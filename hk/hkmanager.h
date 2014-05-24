@@ -2,7 +2,24 @@
 #define XMMANAGER_H
 
 #include "../frontdevice.h"
-#include "HCNetSDK.h"
+
+#if (defined(WIN32) || defined(WIN64))
+	#if (defined(WIN32))
+	#warning "using windows i586 include file"
+	#include "i586/HCNetSDK.h"
+	#else
+	#warning "using windows x64 include file"
+	#include "x64/HCNetSDK.h"
+	#endif
+#else
+	#ifndef _LP64
+	#warning "using linux i586 include file"
+	#include "i586/HCNetSDK.h"
+	#else
+	#warning "using linux x64 include file"
+	#include "x64/HCNetSDK.h"
+	#endif
+#endif
 
 struct hkdevice
 {

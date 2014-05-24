@@ -2,8 +2,24 @@
 #define DHMANAGER_H
 
 #include "../frontdevice.h"
-#include "dhnetsdk.h"
 
+#if (defined(WIN32) || defined(WIN64))
+	#if (defined(WIN32))
+	#warning "using windows i586 include file"
+	#include "i586/dhnetsdk.h"
+	#else
+	#warning "using windows x64 include file"
+	#include "x64/dhnetsdk.h"
+	#endif
+#else
+	#ifndef _LP64
+	#warning "using linux i586 include file"
+	#include "i586/dhnetsdk.h"
+	#else
+	#warning "using linux x64 include file"
+	#include "x64/dhnetsdk.h"
+	#endif
+#endif
 
 struct dhdevice
 {

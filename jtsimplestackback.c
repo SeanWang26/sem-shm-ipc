@@ -46,8 +46,6 @@ static void jt_handle_exception(int value)
 	void *stack_p[10];
 	char **stack_info;
 	int size = 0;
-	char strKillTheSamePortLnvrCmd[255];
-
 	jt_show_signal_type(value);
 	
 	size = backtrace(stack_p, sizeof(stack_p));

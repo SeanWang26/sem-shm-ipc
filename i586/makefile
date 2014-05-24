@@ -11,7 +11,7 @@ frontplug.exe:../main.c ../commnvr.h ../commnvr.cpp ../TimeOutCheck.cpp ../posix
 	$(CCC) -m32 -g -Wall -Wl,-rpath,./ -o frontplug.exe ../main.c ../jtprintf.c ../commnvr.cpp ../TimeOutCheck.cpp  ../posixsem.cpp libjfront.so -lpthread -lrt
 	cp frontplug.exe zhamponxm_SDK.exe
 
-plugtest.exe:../plugtest.cpp ../jtsimplestackback.c
+plugtest.exe: ../plugtest.cpp ../jtsimplestackback.c
 	$(CCC) -m32  -g -Wall -Wl,-rpath,./ -o plugtest.exe ../plugtest.cpp ../jtsimplestackback.c -L./ -ljfront -ljtxm -ljthk -ljtdh -lxmnetsdk -lrt -lpthread
 
 .PHONY : all

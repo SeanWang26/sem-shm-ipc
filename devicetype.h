@@ -159,7 +159,7 @@ struct st_stream_data
 typedef int (JT_CALL_TYPE *jt_stream_callback)(int callback_type, void* data, void** user);
 
 //如果是停止的回调，用户可能会修改*user的值
-typedef void* (JT_CALL_TYPE *jt_talk_callback)(void* data);
+typedef void* (JT_CALL_TYPE *jt_talk_callback)(int callback_type, void* data, void** user);
 
 
 //回调事件类型

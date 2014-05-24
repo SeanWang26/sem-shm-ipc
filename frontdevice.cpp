@@ -176,6 +176,7 @@ struct device *alloc_device(unsigned int type)
 	return (struct device *)NULL;
 }
 
+
 int free_device(struct device * dev)
 {
 	if(dev->alarmcallback)
@@ -189,18 +190,40 @@ int free_device(struct device * dev)
 	return 0;
 }
 
+
+int free_channel(struct channel *chn)
+{
+	if(chn->audiocallback)
+		chn->audiocallback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &chn->audiouserdata);
+	return 0;
+}
+
+int free_stream(struct stream *stm)
+{
+	assert(stm);
+	if(stm->videobuf.buf)
+		free_singlebuf(&stm->videobuf);
+
+	if(stm->callback)
+		stm->callback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &stm->userdata);
+
+	free(stm);
+	return 0;
+}
+
+
 int destroy_device(struct device *dev)
 {
-	struct channel *chn1, chn2;
+	struct channel *chn1, *chn2;
 	LIST_FOR_EACH_ENTRY_SAFE(chn1, chn2, &dev->channels, struct channel, entry)
 	{
-		struct stream *stm1, stm2;
+		struct stream *stm1, *stm2;
 		LIST_FOR_EACH_ENTRY_SAFE(stm1, stm2, &chn1->streams, struct stream, entry)
 		{
 			list_remove(&stm1->entry);
 			free_stream(stm1);
 		}
-		
+
 		list_remove(&chn1->entry);
 		free_channel(chn1);
 	}
@@ -208,7 +231,7 @@ int destroy_device(struct device *dev)
 	list_remove(&dev->entry);
 	free_device(dev);
 
-	return -1;
+	return 0;
 }
 
 int device_init(struct device *dev)
@@ -402,13 +425,6 @@ struct channel *alloc_channel(size_t size)
     return (struct channel *)NULL;
 }
 
-int free_channel(struct channel *chn)
-{
-	if(chn->audiocallback)
-		chn->audiocallback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &chn->audiouserdata);
-	return 0;
-}
-
 struct channel* add_channel(struct device *dev, struct channel *newchn)
 {
 	struct channel* chn;
@@ -521,20 +537,6 @@ struct stream *alloc_stream(size_t size, int streamid)
     }
 	
     return (struct stream *)NULL;
-}
-
-int free_stream(struct stream *stm)
-{
-	assert(stm);
-
-	if(stream->videobuf.buf)
-		free_singlebuf(&stream->videobuf);
-
-	if(stm->callback)
-		stm->callback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &stm->userdata);
-
-	free(stm);
-	return 0;
 }
 
 struct stream *alloc_stream_with_videobuf(size_t size, int streamid, unsigned int len)

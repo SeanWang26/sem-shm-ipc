@@ -119,7 +119,7 @@ int JT_CALL_TYPE jt_logout_ex(void* handle, struct stLogout_Req *req, struct stL
 		
 		int res = dev->ops->logout(dev, req, rsp);
 
-		free_device(dev);
+		destroy_device(dev);
 
 		return res;
 	}
