@@ -272,7 +272,7 @@ static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType
 }
 #endif
 
-#if 1
+#if 0
 static void CALLBACK hk_standard_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, DWORD pUser)
 {
 	//创建一个线程局部变量,标识pulling,   todo.............
@@ -1732,28 +1732,28 @@ static int hk_ptz_control(struct device * dev, struct stPTZControl_Req *req, str
 				
 		break;
 		case JPTZ_PUSH_FAR://拉远
-			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, ZOOM_OUT, 0, req->Speed);
+			NET_DVR_PTZControlWithSpeed(stm->playhandle, ZOOM_OUT , 0, hk_ptz_speed_convert(req->Speed));
 		break;
 		case JPTZ_PULL_NEAR://推近
-			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, ZOOM_IN, 0, req->Speed);
+			NET_DVR_PTZControlWithSpeed(stm->playhandle, ZOOM_IN, 0, hk_ptz_speed_convert(req->Speed));
 		break;
 		case JPTZ_IRIS_ADD://光圈加
-			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, IRIS_OPEN, 0, req->Speed);
+			NET_DVR_PTZControlWithSpeed(stm->playhandle, IRIS_OPEN, 0, hk_ptz_speed_convert(req->Speed));
 		break;
 		case JPTZ_IRIS_SUB://光圈减
-			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, IRIS_CLOSE, 0, req->Speed);
+			NET_DVR_PTZControlWithSpeed(stm->playhandle, IRIS_CLOSE, 0, hk_ptz_speed_convert(req->Speed));
 		break;
 		case JPTZ_FOCUS_FAR://焦距++
-			//H264_DVR_PTZControl(hkdev->loginid, req->Channel, FOCUS_FAR, 0, req->Speed);
+			NET_DVR_PTZControlWithSpeed(stm->playhandle, FOCUS_FAR, 0, hk_ptz_speed_convert(req->Speed));
 		break;
 		case JPTZ_FOCUS_NEAR://焦距--
-			//H264_DVR_PTZControl(hkdev->loginid, req->Channel, FOCUS_NEAR, 0, req->Speed);
+			NET_DVR_PTZControlWithSpeed(stm->playhandle, FOCUS_NEAR, 0, hk_ptz_speed_convert(req->Speed));
 		break;
 		case JSET_PRESET://设置预置点
-			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_SET_CONTROL, req->PresetNum, 2, 3, 0);
+			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, EXTPTZ_POINT_SET_CONTROL, req->PresetNum, 2, 3, 0);
 		break;
 		case JCLEAR_PRESET://清除预置点
-			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_DEL_CONTROL, req->PresetNum, 2, 3, 0);
+			//NET_DVR_PTZControlWithSpeed(hkdev->loginid, req->Channel, EXTPTZ_POINT_DEL_CONTROL, req->PresetNum, 2, 3, 0);
 		break;
 		case JGOTO_PRESET://转到预置点
 			//H264_DVR_PTZControlEx(hkdev->loginid, req->Channel, EXTPTZ_POINT_MOVE_CONTROL, req->PresetNum, 2, 3, 0);
@@ -1792,33 +1792,28 @@ static int hk_set_system_time(struct device *dev, struct stSetTime_Req *req, str
 	jtprintf("[%s]try set time to %d-%d-%d %d:%d:%d\n"
 		, __FUNCTION__, req->year, req->month, req->day, req->hour, req->minute, req->second);
 
-	//hkdevice *hkdev = (hkdevice *)dev;	
+	hkdevice *hkdev = (hkdevice *)dev;
 
-	return NOT_IMPLEMENT;
-	/*SDK_SYSTEM_TIME time;
-	time.month = req->month;
-	time.day = req->day;
-	time.hour = req->hour;
-	time.isdst = 1;
-	time.minute = req->minute;
-	time.second = req->second;
-	time.wday = 1;//may be calc is better
-	time.year = req->year;
-	if(H264_DVR_SetSystemDateTime (hkdev->loginid, &time))
-	{
-		jtprintf("[%s]set time ok\n", __FUNCTION__);
-		rsp->DeviceHandle = (long long)(unsigned long)dev;
-		rsp->month=req->month;
-		rsp->day=req->day;
-		rsp->hour=req->hour;
-		rsp->minute=req->minute;
-		rsp->second=req->second;
-		rsp->year=req->year;
-
-		return 0;
-	}*/
+	NET_DVR_TIME hktime;
+	hktime.dwYear = req->year;
+	hktime.dwMonth = req->month;
+	hktime.dwDay = req->day;
+	hktime.dwHour = req->hour;
+	hktime.dwMinute = req->minute;
+	hktime.dwSecond = req->second;
+	DWORD dwInBufferSize = sizeof(NET_DVR_TIME);
 	
-	return -1;
+	if(!NET_DVR_SetDVRConfig(hkdev->loginid, NET_DVR_SET_TIMECFG, 0, &hktime, dwInBufferSize))
+	{
+		jtprintf("[%s]NET_DVR_SetDVRConfig NET_DVR_SET_TIMECFG failed\n", __FUNCTION__);
+		return SET_SYSTEM_TIME_FAILED;
+	}
+	else
+	{
+		jtprintf("[%s]NET_DVR_SetDVRConfig NET_DVR_SET_TIMECFG ok\n", __FUNCTION__);
+	}
+
+	return SUCCESS;
 }
 static int hk_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp)
 {

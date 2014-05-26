@@ -31,8 +31,11 @@
 #define STOP_TALK_FAILED                -41  //视频流不存在
 #define SEND_TALK_DATA_FAILED           -42  //视频流不存在
 
-#define	INVALID_CHANNEL_NO_FAILED				-100 //不正确的通道号
-#define	INVALID_STREAM_NO_FAILED				-101 //不正确的流号
+#define	INVALID_CHANNEL_NO_FAILED		-100 //不正确的通道号
+#define	INVALID_STREAM_NO_FAILED		-101 //不正确的流号
+
+#define	SET_SYSTEM_TIME_FAILED	        -151 //不正确的流号
+
 
 #define NOT_IMPLEMENT                   -500 //未实现
 #endif

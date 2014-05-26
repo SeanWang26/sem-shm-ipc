@@ -184,8 +184,6 @@ static int FindClose(HANDLE handle)
 					return FALSE;
 				}
 
-				//int sem_timedwait((sem_t *)DCALL.SemReq.Ptr), const struct timespec *restrict abs_timeout);
-
 				while ((res = sem_wait((sem_t *)DCALL.SemReq.Ptr)) == -1 && errno == EINTR)//
 					continue;
 
@@ -354,14 +352,20 @@ static int FindClose(HANDLE handle)
 }
 
 //创建一个信号量，并指定初值
-int sem_create_jt(const char* Name,unsigned int Value)
+sem_t* sem_create_jt(const char* Name,unsigned int Value)
 {
 	LinuxDirectCall call;
 	call.SemReq.Head.Type = SEM_Type;
 	call.SemReq.Command = SEM_CREAT;
 	call.SemReq.Name = (char*)Name;
 	call.SemReq.Value = Value;
-	return FindClose((HANDLE)&call);
+
+	if (!FindClose((HANDLE)&call))
+	{
+		return (sem_t*)-1;
+	}
+
+	return  (sem_t*)call.SemReq.Ptr;
 }
 
 //打开一个信号量，并得到指向信号量的指针
@@ -426,6 +430,31 @@ int sem_wait_jt(sem_t * semPtr)
 	call.SemReq.Ptr = (long long)semPtr;
 
 	return FindClose((HANDLE)&call);
+}
+
+int sem_wait_timeout_jt(sem_t * semPtr, int timeout)
+{
+	LinuxDirectCall call;
+	call.SemReq.Head.Type = SEM_Type;
+	call.SemReq.Command = SEM_WAIT_TIMEOUT;
+	call.SemReq.Ptr = (long long)semPtr;
+	call.SemReq.Value = timeout;
+
+	if(FindClose((HANDLE)&call)==FALSE)
+	{
+		if(call.SemReq.Value == -1)//出错了
+		{
+			return -1;
+		}
+		else if(call.SemReq.Value==-2) //超时了
+		{
+			return -2;
+		}
+
+		return -1;
+	}
+	
+	return TRUE;
 }
 
 

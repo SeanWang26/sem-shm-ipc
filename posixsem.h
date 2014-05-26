@@ -4,12 +4,14 @@
 #include <semaphore.h>
 
 //信号量操作
-int sem_create_jt(const char* name,unsigned int value);		//创建一个信号量，并指定初值
+sem_t *sem_create_jt(const char* name,unsigned int value);		//创建一个信号量，并指定初值
 sem_t *sem_open_jt(const char* Name);							//打开一个信号量，并得到指向信号量的指针
 int sem_close_jt(sem_t * semPtr);								//关闭一个具名信号量
 int sem_unlink_jt(const char* name);							//删除一个具名信号量 比如要close引用计数为0
 int sem_getvalue_jt(sem_t * semPtr);							//得到一个具名信号量的当前值 返回值为-1表示错误
 int sem_wait_jt(sem_t * semPtr);								//等到一个信号量为正数，并把当前信号量减一
+int sem_wait_timeout_jt(sem_t * semPtr, int timeout);			//等到一个信号量为正数，并把当前信号量减一, 有超时
+
 int sem_post_jt(sem_t * semPtr);								//在当前的信号量的值上加一
 
 //共享内存操作

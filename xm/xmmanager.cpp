@@ -662,6 +662,7 @@ static int xm_login(struct device *dev, struct stLogin_Req *req, struct stLogin_
 	{
 		jtprintf("[%s]xmdev login success, %s, %d, %s, %s, %ld\n"
 			, __FUNCTION__, dev->ip, dev->port, dev->user, dev->password, xmdev->loginid);
+
 		return SUCCESS;
 	}
 	else
@@ -1326,6 +1327,8 @@ static int xm_start_talk(struct device* dev, struct stStartTalk_Req *req, struct
 
 	if(xmdev->voicehandle == 0)
 	{
+		//H264_DVR_SetTalkMode (long lLoginID, SDK_AudioInFormatConfig* pTalkMode);
+
 		long voicehandle = H264_DVR_StartVoiceCom_MR(xmdev->loginid, xm_audio_data_callback, (long)dev);
 		if(voicehandle <= 0)
 		{
