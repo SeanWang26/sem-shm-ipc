@@ -338,15 +338,19 @@ int JT_CALL_TYPE jt_stop_talk(void* handle, struct stStopTalk_Req *req, struct s
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }
+int JT_CALL_TYPE jt_send_talk_data(void* handle, stSendTalkData_Req *req, stSendTalkData_Rsp *rsp)
+{
+	share_lock_devicelist(__FUNCTION__);
 
+	struct device *dev = get_device((struct device *)handle);
+	if(dev)
+	{
+		int res = dev->ops->send_talk_data(dev, req, rsp);
+		unlock_devicelist(__FUNCTION__);
+		return res;
+	}
 
-
-
-
-
-
-
-
-
-
-
+	unlock_devicelist(__FUNCTION__);
+	return DEVICE_NO_FOUND;
+	
+}

@@ -454,7 +454,7 @@ int sem_wait_timeout_jt(sem_t * semPtr, int timeout)
 		return -1;
 	}
 	
-	return TRUE;
+	return 0;
 }
 
 

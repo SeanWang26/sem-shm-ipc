@@ -99,7 +99,7 @@ struct device_ops
 	int  (*set_system_time)(struct device *, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
 	int  (*start_talk)(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 	int  (*stop_talk)(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
-	int  (*send_talk_data)(struct device *, char *data, unsigned long len);
+	int  (*send_talk_data)(struct device *, stSendTalkData_Req *req, stSendTalkData_Rsp *rsp);
 
 	//int  (*capture_picture)(struct device *, char *req, unsigned long req);
 	//

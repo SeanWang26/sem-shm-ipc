@@ -205,7 +205,6 @@ void HandleException(int value)
 	void *stack_p[10];
 	char **stack_info;
 	int size = 0;
-	char strKillTheSamePortLnvrCmd[255];
 
 	ShowSignalType(value);
 	

@@ -178,6 +178,7 @@ struct stStartTalk_Req
 struct stStartTalk_Rsp
 {
 	long long				DeviceHandle;
+	void*                   TalkHandle;
 	int						Channel;
 };
 //¹Ø±Õ¶Ô½²
@@ -187,6 +188,20 @@ struct stStopTalk_Req
 	int						Channel;
 };
 struct stStopTalk_Rsp
+{
+	long long				DeviceHandle;
+	int						Channel;
+};
+
+struct stSendTalkData_Req
+{
+	long long				DeviceHandle;
+	int						Channel;
+	unsigned char*          Data;
+	int                     DataLen;
+};
+
+struct stSendTalkData_Rsp
 {
 	long long				DeviceHandle;
 	int						Channel;

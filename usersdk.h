@@ -52,6 +52,7 @@ JT_FRONT_API int JT_CALL_TYPE jt_ptz_control(void* handle, struct stPTZControl_R
 JT_FRONT_API int JT_CALL_TYPE jt_set_system_time(void* handle, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
 JT_FRONT_API int JT_CALL_TYPE jt_start_talk(void* handle, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 JT_FRONT_API int JT_CALL_TYPE jt_stop_talk(void* handle, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
+JT_FRONT_API int JT_CALL_TYPE jt_send_talk_data(void* handle, stSendTalkData_Req *req, stSendTalkData_Rsp *rsp);
 
 #ifdef __cplusplus
 }

@@ -29,8 +29,7 @@ static int xm_ptz_control(struct device *, struct stPTZControl_Req *req, struct 
 static int xm_set_system_time(struct device *, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
 static int xm_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 static int xm_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
-static int xm_send_talk_data(struct device *, char *data, unsigned long len);
-
+static int xm_send_talk_data(struct device *, struct stSendTalkData_Req *req, struct stSendTalkData_Rsp *rsp);
 
 static struct device_ops xm_ops = 
 {
@@ -1391,12 +1390,12 @@ static int xm_stop_talk(struct device * dev, struct stStopTalk_Req *req, struct 
 
 	return SUCCESS;
 }
-static int xm_send_talk_data(struct device *dev, char *data, unsigned long len)
+static int xm_send_talk_data(struct device *dev, struct stSendTalkData_Req *req, struct stSendTalkData_Rsp *rsp)
 {
 	xmdevice *xmdev = (xmdevice *)dev;
-	if(0==H264_DVR_VoiceComSendData (xmdev->voicehandle, data, len))
+	if(0==H264_DVR_VoiceComSendData (xmdev->voicehandle, (char*)req->Data, (long)req->DataLen))
 	{
-		jtprintf("[%s]H264_DVR_StopVoiceCom wrong!!\n", __FUNCTION__);
+		jtprintf("[%s]H264_DVR_VoiceComSendData wrong!!\n", __FUNCTION__);
 		return SEND_TALK_DATA_FAILED;
 	}
 	

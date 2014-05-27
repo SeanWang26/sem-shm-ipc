@@ -28,7 +28,7 @@ static int dh_ptz_control(struct device *, struct stPTZControl_Req *req, struct 
 static int dh_set_system_time(struct device *dev, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
 static int dh_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 static int dh_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
-static int dh_send_talk_data(struct device *, char *data, unsigned long len);
+static int dh_send_talk_data(struct device *, struct stSendTalkData_Req *req, struct stSendTalkData_Rsp *rsp);
 
 static struct device_ops dh_ops = 
 {
@@ -1196,7 +1196,7 @@ int dh_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_
 
 	return NOT_IMPLEMENT;
 }
-int dh_send_talk_data(struct device *, char *data, unsigned long  len)
+int dh_send_talk_data(struct device *, struct stSendTalkData_Req *req, struct stSendTalkData_Rsp *rsp)
 {
 	
 	return NOT_IMPLEMENT;

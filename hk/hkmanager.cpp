@@ -29,8 +29,7 @@ static int hk_ptz_control(struct device *, struct stPTZControl_Req *req, struct 
 static int hk_set_system_time(struct device *, struct stSetTime_Req *req, struct stSetTime_Rsp *rsp);
 static int hk_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 static int hk_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
-static int hk_send_talk_data(struct device *, char *data, unsigned long len);
-
+static int hk_send_talk_data(struct device *, struct stSendTalkData_Req *req, struct stSendTalkData_Rsp *rsp);
 
 static struct device_ops hk_ops = 
 {
@@ -1823,7 +1822,7 @@ static int hk_stop_talk(struct device *, struct stStopTalk_Req *req, struct stSt
 {
 	return NOT_IMPLEMENT;
 }
-static int hk_send_talk_data(struct device *, char *data, unsigned long len)
+static int hk_send_talk_data(struct device *, struct stSendTalkData_Req *req, struct stSendTalkData_Rsp *rsp)
 {
 
 	return NOT_IMPLEMENT;
