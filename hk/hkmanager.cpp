@@ -143,19 +143,36 @@ inline unsigned int move_to_video_payload_data(BYTE *indata, unsigned int indata
  
     return *outdatalen;  
 }
+//图像参考序列
+static int ispictureseq(unsigned char byte)
+{
+	return (0x1f&byte)==0x07;
+}
+//帧参考序列
+static int isframeseq(unsigned char byte)
+{
+	return (0x1f&byte)==0x08;
+}
+//立即刷新单元
+static int isrefrencefream(unsigned char byte)
+{
+	return (0x1f&byte)==0x05;
+}
+
 
 #if 1
 static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, void* pUser)
 {
 	struct hkstream* stream = (struct hkstream*)pUser;
 	
+	/*
 	jtprintf("[%s]type %d, size %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
 		, __FUNCTION__, dwDataType, dwBufSize
 		, pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3] ,pBuffer[4]
 		, pBuffer[5], pBuffer[6], pBuffer[7], pBuffer[8] ,pBuffer[9]
 		, pBuffer[10], pBuffer[11], pBuffer[12], pBuffer[13] , pBuffer[14]
 		, pBuffer[15], pBuffer[16], pBuffer[17], pBuffer[18] , pBuffer[19]);
-	
+	*/
 
 	if(dwDataType == NET_DVR_STREAMDATA)
 	{
@@ -163,6 +180,7 @@ static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType
 		if(startcode->stream_id[0] == 0xba)
 		{
 			//jtprintf("[%s]new packet\n", __FUNCTION__);
+			//dosaveraw(pBuffer, dwBufSize);
 
 			unsigned char* vdata = NULL;
 			unsigned int vdatalen = 0;
@@ -171,10 +189,78 @@ static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType
 				//jtprintf("[%s]read_from_singlebuf data %p, len %d\n"
 				//	, __FUNCTION__, vdata, vdatalen);
 
-				//dosaveraw(vdata, vdatalen);
+				jtprintf("[%s]type %d, size %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+					, __FUNCTION__, dwDataType, vdatalen
+					, vdata[0], vdata[1], vdata[2], vdata[3] ,vdata[4]
+					, vdata[5], vdata[6], vdata[7], vdata[8] ,vdata[9]
+					, vdata[10], vdata[11], vdata[12], vdata[13] , vdata[14]
+					, vdata[15], vdata[16], vdata[17], vdata[18] , vdata[19]);
+
+				struct channel* chn = (struct channel*)stream->stm.obj.parent;
+				struct device* dev = (struct device*)chn->obj.parent;
+		
+				dosaveraw(vdata, vdatalen);
+				st_stream_data stmdata;
+				stmdata.streamtype = VIDEO_STREAM_DATA;
+				stmdata.pdata= (char*)vdata;
+				stmdata.datalen = (int)vdatalen;
+
+				//只要是三者之一就判断为i帧
+				if(ispictureseq(vdata[4]) || isframeseq(vdata[4]) || isrefrencefream(vdata[4]))
+				{
+					//jtprintf("[%s]i frame\n", __FUNCTION__);
+					stmdata.stream_info.video_stream_info.frametype = I_FRAME;
+				}
+				else 
+				{
+					//jtprintf("[%s]no frame\n", __FUNCTION__);
+					stmdata.stream_info.video_stream_info.frametype = P_FRAME;
+				}				
+				
+				if(stream->stm.id==0)//主码流
+				{
+					stmdata.stream_info.video_stream_info.width = dev->encodeinfo.ch_encode_info[chn->id].mainencode.width;
+					stmdata.stream_info.video_stream_info.height = dev->encodeinfo.ch_encode_info[chn->id].mainencode.height;
+					stmdata.stream_info.video_stream_info.encode = dev->encodeinfo.ch_encode_info[chn->id].mainencode.encodetype;
+					stmdata.stream_info.video_stream_info.fps = dev->encodeinfo.ch_encode_info[chn->id].mainencode.fps;
+					stmdata.stream_info.video_stream_info.bitrate = dev->encodeinfo.ch_encode_info[chn->id].mainencode.bitrate;
+				}
+				else//子码流
+				{
+					stmdata.stream_info.video_stream_info.width = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.width;
+					stmdata.stream_info.video_stream_info.height = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.height;
+					stmdata.stream_info.video_stream_info.encode = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.encodetype;
+					stmdata.stream_info.video_stream_info.fps = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.fps;
+					stmdata.stream_info.video_stream_info.bitrate = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.bitrate;
+				}
+
+				stmdata.year = 2014;
+				stmdata.month = 1;
+				stmdata.day = 1;
+				stmdata.hour = 1;
+				stmdata.minute = 1;
+				stmdata.second = 1;
+
+				struct timespec ts;
+				clock_gettime(CLOCK_REALTIME, &ts);
+				if(stream->stm.llbegintime==0ULL)
+				{
+					stmdata.llbegintime = ts.tv_sec* + ts.tv_nsec/100;//100ns
+					stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100;//100ns
+				}
+				else
+				{
+					stmdata.llbegintime = stream->stm.llbegintime;
+					stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100 - stmdata.llbegintime;//100ns
+				}
+				
+				if(stream->stm.callback)
+					stream->stm.callback(CALLBACK_TYPE_VIDEO_STREAM, &stmdata, &stream->stm.userdata);
 			}
 
 			clear_singlebuf(&stream->stm.videobuf);
+
+			return;
 		}
 		else if((startcode->stream_id[0] & 0xf0) == 0xe0)
 		{
@@ -182,45 +268,21 @@ static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType
 
 			unsigned char* vdata = NULL;
 			unsigned int vdatalen = 0;	
-
 			if(move_to_video_payload_data(pBuffer, dwBufSize, &vdata, &vdatalen))
 			{
 				write_to_singlebuf(&stream->stm.videobuf, vdata, vdatalen);
 			}
-		}
 
-		st_stream_data stmdata;
-		stmdata.streamtype = VIDEO_STREAM_DATA;
-		stmdata.pdata= (char*)pBuffer;
-		stmdata.datalen = dwBufSize;
-		stmdata.stream_info.video_stream_info.encode = stream->currentencode;
-		//stmdata.stream_info.video_stream_info.frametype = hk_pack_type_convert((enum MEDIA_PACK_TYPE)pFrame->nPacketType);
-		//stmdata.stream_info.video_stream_info.width = pFrame->dwPacketSize;
-		//stmdata.stream_info.video_stream_info.height = pFrame->dwPacketSize;
-		stmdata.stream_info.video_stream_info.fps = 0;
-		stmdata.stream_info.video_stream_info.bitrate = 0;
-		stmdata.year = 2014;
-		stmdata.month = 1;
-		stmdata.day = 1;
-		stmdata.hour = 1;
-		stmdata.minute = 1;
-		stmdata.second = 1;
-
-		struct timespec ts;
-		clock_gettime(CLOCK_REALTIME, &ts);
-		if(stream->stm.llbegintime==0ULL)
-		{
-			stmdata.llbegintime = ts.tv_sec* + ts.tv_nsec/100;//100ns
-			stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100;//100ns
+			return;
 		}
 		else
 		{
-			stmdata.llbegintime = stream->stm.llbegintime;
-			stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100 - stmdata.llbegintime;//100ns
+			/*if(startcode->stream_id[0] == 0xbd)
+			{
+				dosaveraw(pBuffer, dwBufSize);
+			}*/
+			return;
 		}
-
-		if(stream->stm.callback)
-			stream->stm.callback(CALLBACK_TYPE_VIDEO_STREAM, &stmdata, &stream->stm.userdata);
 
 		return;
 	}
