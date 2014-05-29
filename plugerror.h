@@ -36,6 +36,6 @@
 
 #define	SET_SYSTEM_TIME_FAILED	        -151 //不正确的流号
 
-
+#define	NOT_SURPORT	                    -499 //试图启动设备没有的功能
 #define NOT_IMPLEMENT                   -500 //未实现
 #endif

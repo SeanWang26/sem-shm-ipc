@@ -189,13 +189,13 @@ static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType
 				//jtprintf("[%s]read_from_singlebuf data %p, len %d\n"
 				//	, __FUNCTION__, vdata, vdatalen);
 
-				jtprintf("[%s]type %d, size %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+				/*jtprintf("[%s]type %d, size %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
 					, __FUNCTION__, dwDataType, vdatalen
 					, vdata[0], vdata[1], vdata[2], vdata[3] ,vdata[4]
 					, vdata[5], vdata[6], vdata[7], vdata[8] ,vdata[9]
 					, vdata[10], vdata[11], vdata[12], vdata[13] , vdata[14]
 					, vdata[15], vdata[16], vdata[17], vdata[18] , vdata[19]);
-
+*/
 				struct channel* chn = (struct channel*)stream->stm.obj.parent;
 				struct device* dev = (struct device*)chn->obj.parent;
 		
@@ -1000,6 +1000,8 @@ static int hk_bitrate_convert(DWORD bitrate)
 
 static int hk_fps_convert(int bitrate)
 {
+	if(bitrate==0)
+		return 25;
 	return bitrate;
 }
 
@@ -1175,9 +1177,9 @@ static void hk_show_dev_ability(struct device *dev)
 {
 	jtprintf("[%s]\n", __FUNCTION__);
 	struct hkdevice *hkdev = (hkdevice *)dev;   
-	jtprintf("[%s]byChanNum %d, byIPChanNum %d, byStartChan %d, byStartDChan %d, byMainProto %d, bySubProto %d\n", __FUNCTION__
+	jtprintf("[%s]byChanNum %d, byIPChanNum %d, byStartChan %d, byStartDChan %d, byMainProto %d, bySubProto %d, byAudioChanNum %d\n", __FUNCTION__
 		, hkdev->info.byChanNum,  hkdev->info.byIPChanNum
-		, hkdev->info.byStartChan, hkdev->info.byStartDChan, hkdev->info.byMainProto, hkdev->info.bySubProto);
+		, hkdev->info.byStartChan, hkdev->info.byStartDChan, hkdev->info.byMainProto, hkdev->info.bySubProto, hkdev->info.byAudioChanNum);
 }
 
 static int hk_login(struct device *dev, struct stLogin_Req *req, struct stLogin_Rsp *rsp)
@@ -1472,7 +1474,7 @@ static int hk_operator_channel(struct channel *chn, int type, void* data)
 
 		void* tmp = chn->audiouserdata;
 
-		chn->audiocallback = (jt_stream_callback)req->Callback;
+		chn->audiocallback = req->Callback;
 		chn->audiouserdata = req->UserData;
 		
 		if(chn->audiocallback)
@@ -1503,6 +1505,12 @@ static int hk_open_audio_stream(struct device *dev, struct stOpenAudioStream_Req
 	}
 
 	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, hkdev->dev.ip, hkdev->dev.port);
+
+	if(hkdev->info.byAudioChanNum==0)
+	{
+		jtprintf("[%s]device not suport audio\n", __FUNCTION__);
+		return NOT_SURPORT;
+	}
 
 	struct hkchannel* chn = NULL;
 	chn = (struct hkchannel*)get_channel(&(hkdev->dev.channels), req->Channel);

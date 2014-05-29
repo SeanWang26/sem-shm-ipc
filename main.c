@@ -5,6 +5,8 @@
 #include <string.h>
 #include <execinfo.h>
 #include <signal.h>
+#include <errno.h>
+#include <string.h>
 #include <assert.h>
 
 //#include "create_detached_thread.h"
@@ -259,6 +261,33 @@ int main(int argc, char** argv)
 		jtprintf("frontplug, build time %s, Version %s, %s, 32bit system, sizeof(time_t) %d\n"
 		, __TIME__ , PlugVerion, argv[0], sizeof(time_t));
 #endif
+
+	char cmdpath[256] = {0};
+	strcpy(cmdpath, argv[0]);
+	int plen = strlen(cmdpath);
+	for(; plen>=0; --plen)	
+	{
+		if(cmdpath[plen] == '/')
+		{
+			cmdpath[plen] = 0;
+			break;
+		}
+	}
+
+	if(plen<0)
+	{
+		jtprintf("get cmdpath failed\n");
+		return -1;
+	}
+
+	if(chdir(cmdpath))
+	{
+		jtprintf("set current dir failed , errno %d, %s\n", errno, strerror(errno));
+	}
+
+	char curpath[1024] = {0};
+	getwd(curpath);
+	jtprintf("current dir %s\n", curpath);
 
 	int exenamelen = strlen(argv[0]);
 	int exetype = 0;
