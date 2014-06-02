@@ -87,6 +87,7 @@
 #define ALARM_TYPE_STORAGE_NOT_EXIST                     1004 //储存不存在
 #define ALARM_TYPE_UNKNOWN                               9999 //未知
 
+#define JPTZ_MAX_SEQUENCE_NUM                             16   //云台巡航可设置的最大预置点数
 
 enum{JPTZ_UP=0, JPTZ_RIGHT_UP, JPTZ_RIGHT, JPTZ_RIGHT_DOWN, 
      JPTZ_DOWN, JPTZ_LEFT_DOWN, JPTZ_LEFT, JPTZ_LEFT_UP, 

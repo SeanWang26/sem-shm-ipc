@@ -112,6 +112,16 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 	
 	//lock
 	struct xmstream* stream = (struct xmstream*)dwUser;
+
+	if(!stream->stm.pulling)
+	{	
+		static struct stream* _stream = 0;
+		if(_stream != (struct stream*)stream)
+			jtprintf("[%s]1 stream->stm.pulling %d, stream %p !!!!!!!!\n"
+				, __FUNCTION__, _stream->pulling, _stream);
+		_stream = (struct stream*)stream;
+		return 0;
+	}
 	//jtprintf("xm get frame user %p, type %d, size %u\n", stream, pFrame->nPacketType, pFrame->dwPacketSize);
 
 	/*typedef struct
@@ -685,6 +695,42 @@ static int xm_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 		return DEVICE_NULL_FAILED;
 	}
 
+	struct channel* channel;
+	LIST_FOR_EACH_ENTRY(channel, &xmdev->dev.channels, struct channel, entry)
+	{
+		struct xmchannel* xmchannel = (struct xmchannel*)channel;
+		assert(xmchannel->chn.obj.type == OBJECT_TYPE_CHANNEL);
+		struct stream* stream;
+		LIST_FOR_EACH_ENTRY(stream, &xmchannel->chn.streams, struct stream, entry)
+		{
+			struct xmstream* xmstream = (struct xmstream*)stream;
+			assert(xmstream->stm.obj.type == OBJECT_TYPE_STREAM);
+
+			if(xmstream->playhandle != XM_INVALIDE_PLAYHANDLE)
+			{
+				struct stCloseVideoStream_Req req;
+				struct stCloseVideoStream_Rsp rsp;
+				req.StreamHandle = (long)xmstream;
+				xm_close_video_stream(dev, &req, &rsp);
+			}
+		}
+		
+		channel_init(&xmchannel->chn);
+	}
+
+	/*if(xmdev->alarmhandle)
+	{
+		NET_DVR_CloseAlarmChan_V30(xmdev->alarmhandle);
+		xmdev->alarmhandle = HK_INVALIDE_HANDLE;
+	}*/
+
+	//改为hk_close_video_stream??????
+	/*if(xmchannel->voicehandle != XM_INVALIDE_PLAYHANDLE)
+	{
+		NET_DVR_StopVoiceCom(xmchannel->voicehandle);
+		xmchannel->voicehandle = XM_INVALIDE_PLAYHANDLE;
+	}*/
+
 	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, dev->ip, dev->port);
 
 	if(H264_DVR_Logout(xmdev->loginid))
@@ -770,6 +816,7 @@ static int xm_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	jtprintf("[%s]before H264_DVR_RealPlay %ld, channel %d, nStream %d\n"
 			, __FUNCTION__, xmdev->loginid, req->Channel, req->Codec);
 	long handle = H264_DVR_RealPlay(xmdev->loginid, &playstru);
+	jtprintf("[%s]H264_DVR_GetLastError %ld\n", __FUNCTION__, H264_DVR_GetLastError());
 	if(handle == 0)
 	{
 		jtprintf("[%s]start real stream wrong! m_iPlayhandle %ld, channel %d, nStream %d\n"
@@ -778,7 +825,7 @@ static int xm_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	}
 	else
 	{
-		jtprintf("[%s]start real stream ok\n", __FUNCTION__);
+		jtprintf("[%s]start real stream ok, playhandle %d\n", __FUNCTION__, handle);
 		//方便用户修改上一次的 userdata数据
 		if(stm->stm.callback)
 			stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM_OPENED, NULL, &stm->stm.userdata);
@@ -788,8 +835,6 @@ static int xm_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 		stm->stm.llbegintime = 0;
 		stm->currentencode = VIDEO_ENCODE_VIDEO_H264;//先默认了
 		stm->stm.callback = (jt_stream_callback)req->Callback;
-		//if(stm->stm.userdata) 
-		//	free(stm->stm.userdata);//////danger!!!!!!!!
 		stm->stm.userdata = req->UserData;
 		rsp->StreamHandle = (long)stm;
 		jtprintf("[%s]rsp->StreamHandle %ld\n", __FUNCTION__, rsp->StreamHandle);
@@ -829,11 +874,11 @@ static int xm_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 		return INVALID_STREAM_NO_FAILED;
 	}
 
-	if(stm->playhandle==0)
+	if(stm->playhandle==XM_INVALIDE_PLAYHANDLE)
 	{
 		jtprintf("[%s]stm->playhandle==0, aready closed\n", __FUNCTION__);
 		stm->stm.pulling = 0;
-		stm->playhandle = 0L;
+		stm->playhandle = XM_INVALIDE_PLAYHANDLE;
 		stm->stm.callback = NULL;
 		stm->stm.llbegintime = 0;
 		return SUCCESS;
@@ -842,7 +887,7 @@ static int xm_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 	if(H264_DVR_SetRealDataCallBack_V2(stm->playhandle, NULL, 0)==0)
 	{
 		jtprintf("[%s]set video callback failed!\n", __FUNCTION__);
-		//return SET_VIDEO_CALLBACK_FAILED;
+		return SET_VIDEO_CALLBACK_FAILED;
 	}
 
 	if(H264_DVR_StopRealPlay(stm->playhandle))
@@ -852,7 +897,7 @@ static int xm_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 		
 		jtprintf("[%s]H264_DVR_StopRealPlay ok!\n", __FUNCTION__);
 		stm->stm.pulling = 0;
-		stm->playhandle = 0L;
+		stm->playhandle = XM_INVALIDE_PLAYHANDLE;
 		stm->stm.callback = NULL;
 		stm->stm.llbegintime = 0;
 	}

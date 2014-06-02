@@ -78,9 +78,9 @@ int JT_CALL_TYPE stream_callback(int _callback_type, void* _data, void** _user)
 
 void* handle= NULL;
 
-int devtype = DEVICE_HK;
+//int devtype = DEVICE_HK;
 //int devtype = DEVICE_DH;
-//int devtype = DEVICE_XM;
+int devtype = DEVICE_XM;
 
 void* func(void *)
 {
@@ -100,7 +100,7 @@ void* func(void *)
 	}
 
 	//struct stLogin_Req req = {{"192.168.0.171"}, 34567, {"admin"}, {""}, NULL};
-	struct stLogin_Req req = {{"192.168.3.152"}, 8000, {"admin"}, {"12345"}, NULL};
+	struct stLogin_Req req = {{"192.168.0.171"}, 34567, {"admin"}, {""}, NULL};
 	struct stLogin_Rsp rsp;
 	ret = jt_login(handle, &req, &rsp);
 	if(ret)

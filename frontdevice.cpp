@@ -229,6 +229,7 @@ int destroy_device(struct device *dev)
 	}
 
 	list_remove(&dev->entry);
+	
 	free_device(dev);
 
 	return 0;
@@ -354,9 +355,11 @@ struct device *get_device_by_stream(stream* stm)
 			struct stream *stream;
 			LIST_FOR_EACH_ENTRY(stream, &chn->streams, struct stream, entry)
 			{
+				jtprintf("[%s]ip %s, port %u, stm %p, stream %p\n"
+					, __FUNCTION__, device->ip, device->port, stm, stream);
 				if(stm==stream)
 				{
-					//jtprintf("[%s]find device record, stm %p\n", __FUNCTION__, device);
+					jtprintf("[%s]find device record, stm %p\n", __FUNCTION__, device, stm);
 					return device;
 				}
 			}

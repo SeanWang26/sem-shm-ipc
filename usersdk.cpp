@@ -113,6 +113,8 @@ int JT_CALL_TYPE jt_logout_ex(void* handle, struct stLogout_Req *req, struct stL
 	struct device *dev = get_device((struct device *)handle);
 	if(dev)
 	{
+		jtprintf("[%s]%s, %u\n", __FUNCTION__, dev->ip, dev->port);
+
 		remove_device(dev);
 		
 		unlock_devicelist(__FUNCTION__);

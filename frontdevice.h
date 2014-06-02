@@ -52,6 +52,14 @@ struct dev_encode_info
 	struct channel_encode_info ch_encode_info[MAX_CHANNEL_ENCODE_INFO];
 };
 
+struct capability_set //能力集
+{
+	int channelcnt; //通道数
+	int hasaudio;   //支持音频
+	int hasptz;     //支持云台
+	//...
+};
+
 struct device
 {
 	struct object             obj;
@@ -74,8 +82,9 @@ struct device
 	jt_talk_callback          talkcallback;
 	void*					  talkuserdata;
 	unsigned long int         talkthreadid;
-		
-	struct dev_encode_info    encodeinfo;
+
+	struct dev_encode_info    encodeinfo;  	//编码信息
+	struct capability_set     capabilityset;//设备能力集
 	int                       logined;
 };
 

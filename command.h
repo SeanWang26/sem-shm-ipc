@@ -256,7 +256,7 @@ struct stPTZControl_Req
 	int						TourNum;
 	int						PresetNum;
 	char					PresetName[32];
-	int						SequenceGroup[4];
+	int						SequenceGroup[JPTZ_MAX_SEQUENCE_NUM];
 	int						SequenceNum;
 	int						Preset;
 };

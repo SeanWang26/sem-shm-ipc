@@ -8,7 +8,7 @@ libjfront.so:../usersdk.cpp ../frontdevice.cpp ../seansinglebuf.c ../usersdk.cpp
 	$(CCC) -m32 -g -fPIC -Wl,-rpath,./ -Wall -shared -o libjfront.so ../usersdk.cpp ../frontdevice.cpp ../seansinglebuf.c ../jtprintf.c -L./ -ldl
 
 frontplug.exe:../main.c ../commnvr.h ../commnvr.cpp ../TimeOutCheck.cpp ../posixsem.cpp ../SemSemIpcUtility.cpp ../jtprintf.c
-	$(CCC) -m32 -g -Wall -o frontplug.exe ../main.c ../jtprintf.c ../commnvr.cpp ../TimeOutCheck.cpp ../posixsem.cpp ../SemSemIpcUtility.cpp libjfront.so -lpthread -lrt -ldl
+	$(CCC) -m32 -g -Wall -o frontplug.exe ../main.c ../jtprintf.c ../commnvr.cpp ../TimeOutCheck.cpp ../posixsem.cpp ../SemSemIpcUtility.cpp -lpthread -lrt -ldl
 	cp frontplug.exe zhamponxm_SDK.exe
 
 plugtest.exe: ../plugtest.cpp ../jtsimplestackback.c

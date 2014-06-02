@@ -27,9 +27,9 @@
 
 #define VIDEO_STREAM_NOT_EXIST          -22  //视频流不存在
 
-#define START_TALK_FAILED               -40  //视频流不存在
-#define STOP_TALK_FAILED                -41  //视频流不存在
-#define SEND_TALK_DATA_FAILED           -42  //视频流不存在
+#define START_TALK_FAILED               -40  //开对讲失败
+#define STOP_TALK_FAILED                -41  //关对讲失败
+#define SEND_TALK_DATA_FAILED           -42  //发送对讲数据失败
 
 #define	INVALID_CHANNEL_NO_FAILED		-100 //不正确的通道号
 #define	INVALID_STREAM_NO_FAILED		-101 //不正确的流号

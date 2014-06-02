@@ -44,7 +44,7 @@ struct xmstream
 extern "C" int xm_lib_init();
 extern "C" struct xmdevice *xm_alloc_device(void);
 
-#define XM_INVALIDE_LOGINID    -1
-#define XM_INVALIDE_PLAYHANDLE -1
+#define XM_INVALIDE_LOGINID    0
+#define XM_INVALIDE_PLAYHANDLE 0
 
 #endif

@@ -286,7 +286,7 @@ int main(int argc, char** argv)
 	}
 
 	char curpath[1024] = {0};
-	getwd(curpath);
+	getcwd(curpath, 1024);
 	jtprintf("current dir %s\n", curpath);
 
 	int exenamelen = strlen(argv[0]);

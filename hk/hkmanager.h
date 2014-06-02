@@ -27,13 +27,13 @@ struct hkdevice
 	long 			loginid;
 
 	LONG			alarmhandle;//				±¨¾¯¾ä±ú
-	long			voicehandle;//				¶Ô½²¾ä±ú
 	NET_DVR_DEVICEINFO_V30 info;
 };
 
 struct hkchannel
 {
-	struct channel chn;
+	struct channel  chn;
+	long			voicehandle;//				¶Ô½²¾ä±ú
 };
 
 struct hkstream
