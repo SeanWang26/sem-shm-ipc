@@ -56,6 +56,7 @@ static struct device_ops xm_ops =
 
 void CALL_METHOD xm_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
 {
+	jtprintf("[%s]enter\n", __FUNCTION__);
 	FIND_DEVICE_BEGIN(struct xmdevice,DEVICE_XM)
 	{
 		if(dev->loginid == lLoginID)
@@ -70,6 +71,7 @@ void CALL_METHOD xm_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVR
 
 static void CALL_METHOD xm_sub_disconnect_callBack(long lLoginID, SubConnType type, long nChannel, long dwUser)
 {
+	jtprintf("[%s]enter\n", __FUNCTION__);
 	FIND_DEVICE_BEGIN(struct xmdevice,DEVICE_XM)
 	{
 		if(dev->loginid == lLoginID)
@@ -122,6 +124,8 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 		_stream = (struct stream*)stream;
 		return 0;
 	}
+
+	
 	//jtprintf("xm get frame user %p, type %d, size %u\n", stream, pFrame->nPacketType, pFrame->dwPacketSize);
 
 	/*typedef struct
@@ -245,6 +249,7 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 }
 void xm_audio_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, char byAudioFlag, long dwUser)
 {
+	jtprintf("[%s]enter\n", __FUNCTION__);
 	//lock
 	//struct xmdevice
 	//jtprintf("[%s]lTalkHandle %ld, dwBufSize %d, byAudioFlag %d\n"
@@ -293,6 +298,7 @@ void xm_audio_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, ch
 
 void* xm_send_talk_data_thread(void* user)
 {
+	jtprintf("[%s]enter\n", __FUNCTION__);
 	/*jtprintf("[%s]xm_send_talk_data_thread\n", __FUNCTION__);
 	struct device *dev = (struct device*)user;
 	share_lock_devicelist(__FUNCTION__);
@@ -384,6 +390,7 @@ static inline int xm_handle_alarm(xmdevice *device, char *pBuf, unsigned long dw
 static bool CALL_METHOD xm_mess_callback(long lLoginID, char *pBuf, unsigned long dwBufLen, long dwUser)
 {
 	//lock
+	jtprintf("[%s]enter\n", __FUNCTION__);
 	struct device* device;
 	LIST_FOR_EACH_ENTRY(device, &devicelist, struct device, entry)
 	{
@@ -669,15 +676,15 @@ static int xm_login(struct device *dev, struct stLogin_Req *req, struct stLogin_
 	xmdev->loginid = H264_DVR_Login((char*)dev->ip, dev->port,(char*)dev->user, (char*)dev->password,(LPH264_DVR_DEVICEINFO)(&xmdev->info),&err);		
 	if(xmdev->loginid != 0)
 	{
-		jtprintf("[%s]xmdev login success, %s, %d, %s, %s, %ld\n"
-			, __FUNCTION__, dev->ip, dev->port, dev->user, dev->password, xmdev->loginid);
+		jtprintf("[%s]xmdev login success, %s, %d, %s, %s, %ld, err %d\n"
+			, __FUNCTION__, dev->ip, dev->port, dev->user, dev->password, xmdev->loginid, err);
 
 		return SUCCESS;
 	}
 	else
 	{
-		jtprintf("[%s]xmdev login failed, %s, %d, %s, %s, error %d, loginid %d\n"
-			, __FUNCTION__, dev->ip, dev->port, dev->user, dev->password, err, xmdev->loginid);
+		jtprintf("[%s]xmdev login failed, %s, %d, %s, %s, error %d, loginid %d, err %d\n"
+			, __FUNCTION__, dev->ip, dev->port, dev->user, dev->password, err, xmdev->loginid, err);
 		return LOGIN_FAILED;
 	}
 

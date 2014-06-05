@@ -307,6 +307,10 @@ int main(int argc, char** argv)
 			{
 				exetype = 4;
 			}
+			else if(!memcmp((void*)(&(argv[0][i])+1), "zhsonysnc_SDK.exe", sizeof("zhsonysnc_SDK.exe")))
+			{
+				exetype = 1;
+			}
 
 			jtprintf("it is %d\n", exetype);
 		}

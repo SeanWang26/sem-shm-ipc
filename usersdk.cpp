@@ -224,6 +224,7 @@ int JT_CALL_TYPE jt_get_config(void* handle, struct stGetConfig_Req *req, struct
 		return res;
 	}
 
+	jtprintf("[jt_get_config]not find dev %p\n", dev);
 	unlock_devicelist(__FUNCTION__);
 	return DEVICE_NO_FOUND;
 }

@@ -170,6 +170,10 @@ struct device *alloc_device(unsigned int type)
 	{
 		ALLOC_SPEC_DEVICE(hk);
 	}
+	else if(type==DEVICE_SN)
+	{
+		ALLOC_SPEC_DEVICE(sn);
+	}
 
 #endif
 
@@ -193,6 +197,7 @@ int free_device(struct device * dev)
 
 int free_channel(struct channel *chn)
 {
+	//设备删除，释放掉audiouserdata上数据
 	if(chn->audiocallback)
 		chn->audiocallback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &chn->audiouserdata);
 	return 0;
@@ -204,6 +209,7 @@ int free_stream(struct stream *stm)
 	if(stm->videobuf.buf)
 		free_singlebuf(&stm->videobuf);
 
+	//设备删除，释放掉userdata上数据
 	if(stm->callback)
 		stm->callback(CALLBACK_TYPE_DEVICE_DELETED, NULL, &stm->userdata);
 

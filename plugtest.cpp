@@ -80,7 +80,9 @@ void* handle= NULL;
 
 //int devtype = DEVICE_HK;
 //int devtype = DEVICE_DH;
-int devtype = DEVICE_XM;
+//int devtype = DEVICE_XM;
+int devtype = DEVICE_SN;
+
 
 void* func(void *)
 {
@@ -100,7 +102,7 @@ void* func(void *)
 	}
 
 	//struct stLogin_Req req = {{"192.168.0.171"}, 34567, {"admin"}, {""}, NULL};
-	struct stLogin_Req req = {{"192.168.0.171"}, 34567, {"admin"}, {""}, NULL};
+	struct stLogin_Req req = {{"192.168.0.103"}, 8000, {"admin"}, {"admin"}, NULL};
 	struct stLogin_Rsp rsp;
 	ret = jt_login(handle, &req, &rsp);
 	if(ret)
@@ -120,7 +122,6 @@ void* func(void *)
 
 	jt_get_config(handle, &reqc, &rspc);
 
-
 	while(1)
 	{
 		struct stOpenVideoStream_Req req2;
@@ -137,15 +138,15 @@ void* func(void *)
 		req3.UserData = new int(2);
 		jt_open_alarm_stream(handle, &req3, &rsp3);
 
-/*
+
 		struct stOpenAudioStream_Req req5;
 		struct stOpenAudioStream_Rsp rsp5;
 		req5.DeviceHandle = (long long)handle;
 		req5.Callback = stream_callback;
 		req5.UserData = new int(2);
 		req5.Channel = 0;
-		//jt_open_audio_stream(handle, &req5, &rsp5);
-*/
+		jt_open_audio_stream(handle, &req5, &rsp5);
+
 
 		while(1)sleep(5000);
 
@@ -178,8 +179,8 @@ int main(int argc, char** argv)
 	needshowstackbackwhencrack();
 
 	pthread_t tid;
-	create_detached_thread(&tid, func, NULL);
-	//func(NULL);
+	//create_detached_thread(&tid, func, NULL);
+	func(NULL);
 
 	while(1)sleep(20000);
 	return 0;
