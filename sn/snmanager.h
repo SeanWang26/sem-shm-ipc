@@ -26,6 +26,7 @@
 struct sndevice
 {
 	struct device 	dev;
+	int             generation;           //5代或6代
 	long 			loginid;
 
 	long			alarmhandle;//				报警句柄

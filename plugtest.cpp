@@ -102,7 +102,7 @@ void* func(void *)
 	}
 
 	//struct stLogin_Req req = {{"192.168.0.171"}, 34567, {"admin"}, {""}, NULL};
-	struct stLogin_Req req = {{"192.168.0.103"}, 8000, {"admin"}, {"admin"}, NULL};
+	struct stLogin_Req req = {{"192.168.1.106"}, 8000, {"admin"}, {"admin"}, NULL};
 	struct stLogin_Rsp rsp;
 	ret = jt_login(handle, &req, &rsp);
 	if(ret)
@@ -148,7 +148,8 @@ void* func(void *)
 		jt_open_audio_stream(handle, &req5, &rsp5);
 
 
-		while(1)sleep(5000);
+		//while(1)
+			sleep(5);
 
 		//¹Ø±ÕÊÓÆµÁ÷
 		struct stCloseVideoStream_Req req4;

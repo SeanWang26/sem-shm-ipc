@@ -8,6 +8,7 @@
 #include "../devicetype.h"
 #include "../jtprintf.h"
 #include "../seansinglebuf.h"
+#include "../seanh264utility.h"
 
 static int g_hk_initaled = 0;
 
@@ -143,22 +144,6 @@ inline unsigned int move_to_video_payload_data(BYTE *indata, unsigned int indata
  
     return *outdatalen;  
 }
-//图像参考序列
-static int ispictureseq(unsigned char byte)
-{
-	return (0x1f&byte)==0x07;
-}
-//帧参考序列
-static int isframeseq(unsigned char byte)
-{
-	return (0x1f&byte)==0x08;
-}
-//立即刷新单元
-static int isrefrencefream(unsigned char byte)
-{
-	return (0x1f&byte)==0x05;
-}
-
 
 #if 1
 static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, void* pUser)

@@ -4,11 +4,14 @@
 #include <stdlib.h>
 #include <time.h>
 #include <memory>
+#include <sstream>
 
 #include "snmanager.h"
 #include "../devicetype.h"
 #include "../jtprintf.h"
 #include "../seansinglebuf.h"
+#include "../create_detached_thread.h"
+#include "../seanh264utility.h"
 
 #include <string>
 #include <vector>
@@ -149,22 +152,6 @@ inline unsigned int move_to_video_payload_data(unsigned char *indata, unsigned i
  
     return *outdatalen;  
 }
-//图像参考序列
-static int ispictureseq(unsigned char byte)
-{
-	return (0x1f&byte)==0x07;
-}
-//帧参考序列
-static int isframeseq(unsigned char byte)
-{
-	return (0x1f&byte)==0x08;
-}
-//立即刷新单元
-static int isrefrencefream(unsigned char byte)
-{
-	return (0x1f&byte)==0x05;
-}
-
 
 #if 0
 static void CALLBACK sn_real_data_callback_v2(long lPlayHandle, unsigned int dwDataType, unsigned char *pBuffer, unsigned int dwBufSize, void* pUser)
@@ -642,7 +629,9 @@ static int sn_cgi_command_inquiry_system(char *data, size_t size, size_t nmemb, 
 
 	for(vector<string>::iterator iter = statlines.begin(); iter!=statlines.end(); ++iter)
 	{
-		jtprintf("%s\n", iter->c_str());
+		string attri = iter->substr(0, iter->find('='));
+		string value = iter->substr(iter->find('=')+1, string::npos);
+		//jtprintf("attri %s, value %s\n", attri.c_str(), value.c_str());
 	}
 	
 	return nmemb;	
@@ -1193,7 +1182,7 @@ static int sn_device_init(struct sndevice *dev)
 	/////memset(&dev->info, 0, sizeof(dev->info));//清除设备信息
 	dev->alarmhandle = HK_INVALIDE_HANDLE;
 	dev->loginid = HK_INVALIDE_HANDLE;
-	//dev->curl = NULL;
+	dev->generation = 5;    //默认看做第5代
 
 	device_init(&dev->dev);
 
@@ -1288,12 +1277,12 @@ static int sn_ipc_cgi_inquiry(void* callback, void* userdata, char* url, char* u
 	if (code != CURLE_OK)
 	{
 		jtprintf("[%s]Failed to curl_easy_perform [%s]\n", __FUNCTION__, curlerrorBuffer);
-		return 0;
+		goto curl_error;  
 	}
 	else
 	{
 		jtprintf("[%s]curl_easy_perform ok\n", __FUNCTION__);
-		goto curl_error;
+		return 0;
 	}
 
 curl_error:
@@ -1426,48 +1415,114 @@ static int sn_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 	return LOGIN_FAILED;*/
 }
 
-static int sn_paser_efi(char *indata, size_t inlen, char** outdata, int *outlen)
+static int sn_cgi_command_get_stream(char *data, size_t size, size_t nmemb, void *userdata)
 {
-	unsigned char efi_type = 0;
-	unsigned char efi_payload = 0;
+	struct snstream* stm = (struct snstream*)userdata;
+	
+	if(stm->stm.pulling == 1)
+	{
+		if(data[0]==0x00 || data[1]==0x00 || data[2] ==0x00 || data[3] ==0x01)
+		{
 
-	efi_type = indata[5];
-	efi_payload = indata[6];
+			jtprintf("[%s]pulling %d, size %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+				, __FUNCTION__, stm->stm.pulling, size, nmemb
+				, data[0], data[1], data[2], data[3] ,data[4]
+				, data[5], data[6], data[7], data[8] ,data[9]
+				, data[10], data[11], data[12], data[13] , data[14]
+				, data[15], data[16], data[17], data[18] , data[19], data[nmemb-1]);
 
-	*outdata = indata + efi_payload + 7 + 1;  //  1 is rbsp_trailing_bits
-	*outlen = inlen - efi_payload - 7 - 1;    //  1 is rbsp_trailing_bits
+			struct channel* chn = (struct channel*)stm->stm.obj.parent;
+			struct device* dev = (struct device*)chn->obj.parent;
+			
+			st_stream_data stmdata;
+			stmdata.streamtype = VIDEO_STREAM_DATA;
+			stmdata.pdata= data;
+			stmdata.datalen = nmemb;
+
+			if(ispictureseq(data[4]) || isframeseq(data[4]) || isrefrencefream[data[4]])
+			{
+				stmdata.stream_info.video_stream_info.frametype = I_FRAME;
+			}
+			else
+			{
+				stmdata.stream_info.video_stream_info.frametype = P_FRAME;
+			}
+
+			if(stm->stm.id==0)//主码流
+			{
+				//stmdata.stream_info.video_stream_info.width = dev->encodeinfo.ch_encode_info[chn->id].mainencode.width;
+				//stmdata.stream_info.video_stream_info.height = dev->encodeinfo.ch_encode_info[chn->id].mainencode.height;
+				//stmdata.stream_info.video_stream_info.encode = dev->encodeinfo.ch_encode_info[chn->id].mainencode.encodetype;
+				//stmdata.stream_info.video_stream_info.fps = dev->encodeinfo.ch_encode_info[chn->id].mainencode.fps;
+				//stmdata.stream_info.video_stream_info.bitrate = dev->encodeinfo.ch_encode_info[chn->id].mainencode.bitrate;
+			}
+			else//子码流
+			{
+				//stmdata.stream_info.video_stream_info.width = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.width;
+				//stmdata.stream_info.video_stream_info.height = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.height;
+				//stmdata.stream_info.video_stream_info.encode = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.encodetype;
+				//stmdata.stream_info.video_stream_info.fps = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.fps;
+				//stmdata.stream_info.video_stream_info.bitrate = dev->encodeinfo.ch_encode_info[chn->id].sub1encode.bitrate;
+			}
+			
+			//stmdata.year = pFrame->nYear;
+			//stmdata.month = pFrame->nMonth;
+			//stmdata.day = pFrame->nDay;
+			//stmdata.hour = pFrame->nHour;
+			//stmdata.minute = pFrame->nMinute;
+			//stmdata.second = pFrame->nSecond;
+			
+			struct timespec ts;
+			clock_gettime(CLOCK_REALTIME, &ts);
+			if(stm->stm.llbegintime==0ULL)
+			{
+				stmdata.llbegintime = ts.tv_sec* + ts.tv_nsec/100;//100ns
+				stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100;//100ns
+			}
+			else
+			{
+				stmdata.llbegintime = stm->stm.llbegintime;
+				stmdata.llrelativetimetick = ts.tv_sec* + ts.tv_nsec/100 - stmdata.llbegintime;//100ns
+			}
+			
+			if(stm->stm.callback)
+				stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM, &stmdata, &stm->stm.userdata);
+
+		}
+	
+		/*char* outdata = NULL;
+		int outlen = 0;
+		sn_paser_efi(data, size, &outdata, &outlen);
+		data = outdata;
+		if(data)
+			jtprintf("[%s]22 size %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+				, __FUNCTION__, size, nmemb
+				, data[0], data[1], data[2], data[3] ,data[4]
+				, data[5], data[6], data[7], data[8] ,data[9]
+				, data[10], data[11], data[12], data[13] , data[14]
+				, data[15], data[16], data[17], data[18] , data[19], data[nmemb-1]);*/	
+		return nmemb;
+	}
 
 	return 0;
 }
 
-static int sn_cgi_command_get_stream(char *data, size_t size, size_t nmemb, void *userdata)
+static void* sn_cgi_command_get_stream2(void* userdata)
 {
-	jtprintf("[%s]size %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
-		, __FUNCTION__, size, nmemb
-		, data[0], data[1], data[2], data[3] ,data[4]
-		, data[5], data[6], data[7], data[8] ,data[9]
-		, data[10], data[11], data[12], data[13] , data[14]
-		, data[15], data[16], data[17], data[18] , data[19], data[nmemb-1]);
+	struct snstream* stm = (struct snstream*)userdata;
+	struct device *dev = (struct device *)stm->stm.obj.parent->parent;
 
-	char* outdata = NULL;
-	int outlen = 0;
-	sn_paser_efi(data, size, &outdata, &outlen);
-	data = outdata;
-	if(data)
-		jtprintf("[%s]22 size %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
-			, __FUNCTION__, size, nmemb
-			, data[0], data[1], data[2], data[3] ,data[4]
-			, data[5], data[6], data[7], data[8] ,data[9]
-			, data[10], data[11], data[12], data[13] , data[14]
-			, data[15], data[16], data[17], data[18] , data[19], data[nmemb-1]);	
-	return nmemb;
-}
+	char strurl[512]={0};
+	sprintf(strurl, "http://%s:%d/image", dev->ip, dev->port);
+	jtprintf("[%s]111%s\n", __FUNCTION__, strurl);
+	stm->stm.pulling = 1;
+	if(!sn_ipc_cgi_inquiry((void*)sn_cgi_command_get_stream, stm, strurl, dev->user, dev->password, 0))
+	{
+		
+	}
+	jtprintf("[%s]2222%s\n", __FUNCTION__, strurl);
 
-static int sn_cgi_command_get_stream2(char *data, size_t size, size_t nmemb, void *userdata)
-{
-	jtprintf("%d\n", nmemb);
-
-	return nmemb;
+	return NULL;
 }
 
 static int sn_open_video_stream(struct device *dev, struct stOpenVideoStream_Req *req, struct stOpenVideoStream_Rsp *rsp)
@@ -1534,16 +1589,14 @@ static int sn_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 		}
 	}
 
-
-	char strurl[512]={0};
-	sprintf(strurl, "http://%s:%d/image", dev->ip, dev->port);
-	jtprintf("[%s]111%s\n", __FUNCTION__, strurl);
-	if(!sn_ipc_cgi_inquiry((void*)sn_cgi_command_get_stream, dev, strurl, dev->user, dev->password, 0))
+	pthread_t tid;
+	if(create_detached_thread(&tid, sn_cgi_command_get_stream2, stm))
 	{
-		
+		return OPEN_VIDEO_STREAM_FAILED;
 	}
-	jtprintf("[%s]2222%s\n", __FUNCTION__, strurl);
 
+	rsp->StreamHandle = (long)stm;
+	
 	/*
 
 	NET_DVR_PREVIEWINFO playstru;
@@ -1591,16 +1644,16 @@ static int sn_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 		jtprintf("[%s]rsp->StreamHandle %ld\n", __FUNCTION__, rsp->StreamHandle);
 		
 	}
+	*/
 
-	return SUCCESS;*/
+	return SUCCESS;
 }
 static int sn_close_video_stream(struct device *dev, struct stCloseVideoStream_Req *req, struct stCloseVideoStream_Rsp *rsp)
 {
 	jtprintf("[%s]\n", __FUNCTION__);
 	assert(dev!=NULL);
-	return NOT_IMPLEMENT;
 
-	/*jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, dev->ip, dev->port);
+	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, dev->ip, dev->port);
 
 	sndevice *sndev = (sndevice *)dev;
 	if(sndev==NULL)
@@ -1616,7 +1669,7 @@ static int sn_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 		return INVALID_STREAM_NO_FAILED;
 	}
 
-	if(stm->playhandle==HK_INVALIDE_PLAYHANDLE)
+	if(stm->stm.pulling==0)
 	{
 		jtprintf("[%s]stm->playhandle==0, aready closed\n", __FUNCTION__);
 		stm->stm.pulling = 0;
@@ -1626,7 +1679,10 @@ static int sn_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 		return SUCCESS;
 	}
 
-	if(NET_DVR_SetRealDataCallBack(stm->playhandle, NULL, 0)==0)
+	stm->stm.pulling = 0;
+
+
+	/*if(NET_DVR_SetRealDataCallBack(stm->playhandle, NULL, 0)==0)
 	{
 		jtprintf("[%s]set video callback failed! error %d\n", __FUNCTION__, NET_DVR_GetLastError());
 	}
@@ -1657,8 +1713,8 @@ static int sn_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 		jtprintf("[%s]H264_DVR_StopRealPlay error, %d\n", __FUNCTION__, NET_DVR_GetLastError());
 		return CLOSE_VIDEO_STREAM_FAILED;
 	}
-	
-	return SUCCESS;*/
+	*/
+	return SUCCESS;
 }
 static int sn_operator_channel(struct channel *chn, int type, void* data)
 {
@@ -1764,23 +1820,176 @@ static int sn_close_audio_stream(struct device *dev, struct stCloseAudioStream_R
 		, struParams->struNormHighRecordPara.dwVideoBitrate
 		, struParams->struNormHighRecordPara.byResolution);
 }*/
+
+static int sn_fill_encode_info(struct device* dev, vector<string> &codecinfoS)
+{
+	for(vector<string>::iterator iter = codecinfoS.begin(); iter!=codecinfoS.end(); ++iter)
+	{
+		string attri = iter->substr(0, iter->find('='));
+		string value = iter->substr(iter->find('=')+1, string::npos);
+		jtprintf("[sn_fill_encode_info]str %s, attri %s, value %s\n", iter->c_str(), attri.c_str(), value.c_str());
+
+		if(attri=="ImageCodec1")//
+		{
+			if(value=="h264")
+			{
+				jtprintf("[sn_fill_encode_info]ImageCodec1 h264\n");
+				dev->encodeinfo.ch_encode_info[0].mainencode.enable = 1;
+				dev->encodeinfo.ch_encode_info[0].mainencode.encodetype = VIDEO_ENCODE_VIDEO_H264;
+			}
+			else if(value=="mpeg4")
+			{
+				jtprintf("[sn_fill_encode_info]ImageCodec1 mpeg4\n");
+				dev->encodeinfo.ch_encode_info[0].mainencode.enable = 1;
+				dev->encodeinfo.ch_encode_info[0].mainencode.encodetype = VIDEO_ENCODE_VIDEO_MPEG4;
+			}
+			else if(value=="jpeg")
+			{
+				jtprintf("[sn_fill_encode_info]ImageCodec1 jpeg\n");
+				dev->encodeinfo.ch_encode_info[0].mainencode.enable = 1;
+				dev->encodeinfo.ch_encode_info[0].mainencode.encodetype = VIDEO_ENCODE_JPEG;
+			}
+			else if(value=="off")
+			{
+				jtprintf("[sn_fill_encode_info]ImageCodec1 off\n");
+				dev->encodeinfo.ch_encode_info[0].mainencode.enable = 0;
+			}
+		}
+		else if(attri=="ImageCodec2")
+		{
+			if(value=="h264")
+			{
+				jtprintf("[sn_fill_encode_info]ImageCodec2 h264\n");
+				dev->encodeinfo.ch_encode_info[0].sub1encode.enable = 1;
+				dev->encodeinfo.ch_encode_info[0].sub1encode.encodetype = VIDEO_ENCODE_VIDEO_H264;
+			}
+			else if(value=="mpeg4")
+			{
+				jtprintf("[sn_fill_encode_info]ImageCodec2 mpeg4\n");
+				dev->encodeinfo.ch_encode_info[0].sub1encode.enable = 1;
+				dev->encodeinfo.ch_encode_info[0].sub1encode.encodetype = VIDEO_ENCODE_VIDEO_MPEG4;
+			}
+			else if(value=="jpeg")
+			{
+				jtprintf("[sn_fill_encode_info]ImageCodec2 jpeg\n");
+				dev->encodeinfo.ch_encode_info[0].sub1encode.enable = 1;
+				dev->encodeinfo.ch_encode_info[0].sub1encode.encodetype = VIDEO_ENCODE_JPEG;
+			}
+			else if(value=="off")
+			{
+				jtprintf("[sn_fill_encode_info]ImageCodec2 off\n");
+				dev->encodeinfo.ch_encode_info[0].sub1encode.enable = 0;
+			}
+		}
+		else if(attri=="ImageSize1")
+		{
+			string width = value.substr(0, value.find(','));
+			string height = value.substr(value.find(',')+1, string::npos);
+
+			stringstream convert;
+			convert << width;
+			convert >> dev->encodeinfo.ch_encode_info[0].mainencode.width;
+
+			convert.clear();
+
+			convert << height;
+			convert >> dev->encodeinfo.ch_encode_info[0].mainencode.height;
+		}
+		else if(attri=="ImageSize2")
+		{
+			string width = value.substr(0, value.find(','));
+			string height = value.substr(value.find(',')+1, string::npos);
+
+			stringstream convert;
+			convert << width;
+			convert >> dev->encodeinfo.ch_encode_info[0].sub1encode.width;
+
+			convert.clear();
+
+			convert << height;
+			convert >> dev->encodeinfo.ch_encode_info[0].sub1encode.height;
+		}		
+		else if(attri=="FrameRate1")
+		{
+			stringstream convert;
+			convert << value;
+			convert >> dev->encodeinfo.ch_encode_info[0].mainencode.fps;
+		}
+		else if(attri=="FrameRate2")
+		{
+			stringstream convert;
+			convert << value;
+			convert >> dev->encodeinfo.ch_encode_info[0].sub1encode.fps;
+		}
+		else if(attri=="BitRate1")
+		{
+			stringstream convert;
+			convert << value;
+			convert >> dev->encodeinfo.ch_encode_info[0].mainencode.bitrate;
+		}
+		else if(attri=="BitRate2")
+		{
+			stringstream convert;
+			convert << value;
+			convert >> dev->encodeinfo.ch_encode_info[0].sub1encode.bitrate;
+		}
+
+	}
+
+	return 0;
 	
+//主
+/*dev->encodeinfo.ch_encode_info[i].mainencode.enable = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.bVideoEnable;
+dev->encodeinfo.ch_encode_info[i].mainencode.encodetype = xm_get_encode_mode(EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iCompression);
+dev->encodeinfo.ch_encode_info[i].mainencode.fps = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.nFPS;
+
+xm_resolution_convert(EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iResolution
+					, &dev->encodeinfo.ch_encode_info[i].mainencode.width
+					, &dev->encodeinfo.ch_encode_info[i].mainencode.height);
+
+dev->encodeinfo.ch_encode_info[i].mainencode.quality = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iQuality;
+dev->encodeinfo.ch_encode_info[i].mainencode.bitrate = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.nBitRate;
+dev->encodeinfo.ch_encode_info[i].mainencode.bitratectl = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iBitRateControl;
+dev->encodeinfo.ch_encode_info[i].mainencode.gop = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iGOP;
+
+//辅1
+dev->encodeinfo.ch_encode_info[i].sub1encode.enable = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.bVideoEnable;
+dev->encodeinfo.ch_encode_info[i].sub1encode.encodetype = xm_get_encode_mode(EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iCompression);
+dev->encodeinfo.ch_encode_info[i].sub1encode.fps = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.nFPS;
+
+xm_resolution_convert(EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iResolution
+					, &dev->encodeinfo.ch_encode_info[i].sub1encode.width
+					, &dev->encodeinfo.ch_encode_info[i].sub1encode.height);
+
+dev->encodeinfo.ch_encode_info[i].sub1encode.quality = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iQuality;
+dev->encodeinfo.ch_encode_info[i].sub1encode.bitrate = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.nBitRate;
+dev->encodeinfo.ch_encode_info[i].sub1encode.bitratectl = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iBitRateControl;
+dev->encodeinfo.ch_encode_info[i].sub1encode.gop = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iGOP;
+
+//音频
+dev->encodeinfo.ch_encode_info[i].audioencode.encodetype = AUDIO_G711;
+dev->encodeinfo.ch_encode_info[i].audioencode.frequency = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.afFormat.nFrequency;
+dev->encodeinfo.ch_encode_info[i].audioencode.bitrate = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.afFormat.nBitRate;
+dev->encodeinfo.ch_encode_info[i].audioencode.channel = 1;
+dev->encodeinfo.ch_encode_info[i].audioencode.depth = 16;
+
+*/
+}
+
 static int sn_cgi_command_inquiry_codec(char *data, size_t size, size_t nmemb, void *userdata)
 {
 	jtprintf("%s\n", data);
+	struct device* dev = (struct device*)userdata;
 
-	vector<string> statlines;
+	vector<string> codecinfoS;
 	char * s1 = data;
 	char * t;
 	while(t = strsep_s(&s1, "&"))
 	{
-		statlines.push_back(t);
+		codecinfoS.push_back(t);
 	}
 
-	for(vector<string>::iterator iter = statlines.begin(); iter!=statlines.end(); ++iter)
-	{
-		jtprintf("%s\n", iter->c_str());
-	}
+	sn_fill_encode_info(dev, codecinfoS);
 
 	return nmemb;
 }
