@@ -12,6 +12,7 @@
 #include "../seansinglebuf.h"
 #include "../create_detached_thread.h"
 #include "../seanh264utility.h"
+#include "../stringutility.h"
 
 #include <string>
 #include <vector>
@@ -597,18 +598,6 @@ static inline int sn_handle_alarm(sndevice *device, char *pBuf, unsigned long dw
 		}
 	}
 }*/
-
-static char *strsep_s(char **stringp, const char *delim)
-{
-	char *tok;
-	while((tok = strsep(stringp, delim)))
-	{
-		if(strlen(tok))
-			return tok;
-	}
-
-	return NULL;
-}
 
 
 static int sn_cgi_command_inquiry_system(char *data, size_t size, size_t nmemb, void *userdata)
@@ -1428,16 +1417,16 @@ static int sn_cgi_command_get_stream(char *data, size_t size, size_t nmemb, void
 			unsigned int vdatalen = 0;
 			if(read_from_singlebuf(&stm->stm.videobuf, &vdata, &vdatalen))
 			{
-				jtprintf("[%s]pulling %d, size %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+				/*jtprintf("[%s]pulling %d, size %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
 					, __FUNCTION__, stm->stm.pulling, size, vdatalen
 					, vdata[0], vdata[1], vdata[2], vdata[3] ,vdata[4]
 					, vdata[5], vdata[6], vdata[7], vdata[8] ,vdata[9]
 					, vdata[10], vdata[11], vdata[12], vdata[13] , vdata[14]
 					, vdata[15], vdata[16], vdata[17], vdata[18] , vdata[19], vdata[vdatalen-1]);
-
+*/
 				struct channel* chn = (struct channel*)stm->stm.obj.parent;
 				struct device* dev = (struct device*)chn->obj.parent;
-			
+
 				st_stream_data stmdata;
 				stmdata.streamtype = VIDEO_STREAM_DATA;
 				stmdata.pdata= (char*)vdata;
@@ -2042,7 +2031,7 @@ static int sn_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 				sprintf(strurl, "http://%s:%d/command/inquiry.cgi?inq=camera", dev->ip, dev->port);
 				if(sn_ipc_cgi_inquiry((void*)sn_cgi_command_inquiry_codec, dev, strurl, dev->user, dev->password, 0))
 				{
-					jtprintf("[%s]get encode info failed", __FUNCTION__);
+					jtprintf("[%s]get encode info failed\n", __FUNCTION__);
 					return GET_CONFIG_FAILED;  
 				}				
 			}

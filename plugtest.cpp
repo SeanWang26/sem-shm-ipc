@@ -2,12 +2,15 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
-
+#include <string>
+using namespace std;
 #include <pthread.h>
 #include "create_detached_thread.h"
 #include "usersdk.h"
+#include "stringutility.h"
 
 #include "jtsimplestackback.h"
+
 
 int JT_CALL_TYPE stream_callback(int _callback_type, void* _data, void** _user)
 {
@@ -81,7 +84,12 @@ void* handle= NULL;
 //int devtype = DEVICE_HK;
 //int devtype = DEVICE_DH;
 //int devtype = DEVICE_XM;
-int devtype = DEVICE_SN;
+
+int gdevtype = DEVICE_SN;
+char gip[64] = {"192.168.0.100"};
+unsigned int gport = 8000;
+char guser[64] = {"admin"};
+char gpassword[64] = {"admin"};
 
 
 void* func(void *)
@@ -90,19 +98,24 @@ void* func(void *)
 
 	int ret = jt_init(NULL);
 	
-	handle = jt_create_device(devtype);
+	handle = jt_create_device(gdevtype);
 	//handle = jt_create_device(DEVICE_XM);
 	if(handle==NULL)
 	{
-		printf("jt_create_device %d failed\n", devtype);
+		printf("jt_create_device %d failed\n", gdevtype);
 	}
 	else
 	{
-		printf("jt_create_device %d ok, %p\n", devtype, handle);
+		printf("jt_create_device %d ok, %p\n", gdevtype, handle);
 	}
 
 	//struct stLogin_Req req = {{"192.168.0.171"}, 34567, {"admin"}, {""}, NULL};
-	struct stLogin_Req req = {{"192.168.0.100"}, 8000, {"admin"}, {"admin"}, NULL};
+	struct stLogin_Req req;// = {{"192.168.0.100"}, 8000, {"admin"}, {"admin"}, NULL};
+
+	strcpy(req.Ip, gip);
+	strcpy(req.User, guser);
+	strcpy(req.Password, gpassword);
+	
 	struct stLogin_Rsp rsp;
 	ret = jt_login(handle, &req, &rsp);
 	if(ret)
@@ -176,7 +189,34 @@ int main(int argc, char** argv)
 #else
 	printf("%s, time %s, 32bit system\n", argv[0], __TIME__);
 #endif
+	FILE *cfgfp = fopen("./plugtest.cfg", "r");
+	if(cfgfp)
+	{	
+		char str[256] = {0};
+		fgets(str, 256, cfgfp);
 
+		char* t = str;
+		char *ctype = strsep_s(&t, " \t");
+		char *cip = strsep_s(&t, " \t");
+		char *cport = strsep_s(&t, " \t");
+		char *cuser = strsep_s(&t, " \t");
+		char *cpassword = strsep_s(&t, " \t");
+
+		printf("ctype %s, cip %s, cport %s, cuser %s, cpassword %s\n"
+			, ctype, cip, cport, cuser, cpassword);
+
+		if(string("sn")=="sn") gdevtype = DEVICE_SN;
+		else if(string("xm")=="xm") gdevtype = DEVICE_XM;
+		else if(string("hk")=="hk") gdevtype = DEVICE_HK;
+		else if(string("dh")=="dh") gdevtype = DEVICE_DH;
+
+		strcpy(gip, cip);
+		gport = (unsigned int)atoi(cport);
+		strcpy(guser, cuser);
+		strcpy(gpassword, cpassword);
+
+	}
+	
 	needshowstackbackwhencrack();
 
 	pthread_t tid;
