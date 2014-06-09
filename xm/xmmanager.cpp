@@ -500,19 +500,19 @@ static int xm_get_encode_mode(int type)
 	switch(type)
 	{
 		case SDK_CAPTURE_COMP_DIVX_MPEG4:	///< DIVX MPEG4。
-			return VIDEO_ENCODE_UNKOWN;
+			return VIDEO_ENCODE_UNKNOWNN;
 		break;
 		case SDK_CAPTURE_COMP_MS_MPEG4:		///< MS MPEG4。
-			return VIDEO_ENCODE_UNKOWN;
+			return VIDEO_ENCODE_UNKNOWNN;
 		break;
 		case SDK_CAPTURE_COMP_MPEG2: 		///< MPEG2。
-			return VIDEO_ENCODE_UNKOWN;
+			return VIDEO_ENCODE_UNKNOWNN;
 		break;
 		case SDK_CAPTURE_COMP_MPEG1: 		///< MPEG1。
-			return VIDEO_ENCODE_UNKOWN;
+			return VIDEO_ENCODE_UNKNOWNN;
 		break;
 		case SDK_CAPTURE_COMP_H263:			///< H.263
-			return VIDEO_ENCODE_UNKOWN;
+			return VIDEO_ENCODE_UNKNOWNN;
 		break;
 		case SDK_CAPTURE_COMP_MJPG:			///< MJPG
 			return VIDEO_ENCODE_JPEG;
@@ -635,7 +635,7 @@ static int xm_device_init(struct xmdevice *dev)
 			struct xmstream* xmstream = (struct xmstream*)stream;
 			assert(xmstream->stm.obj.type == OBJECT_TYPE_STREAM);
 
-			xmstream->currentencode = VIDEO_ENCODE_UNKNOW;
+			xmstream->currentencode = VIDEO_ENCODE_UNKNOWN;
 			xmstream->playhandle = XM_INVALIDE_PLAYHANDLE;
 
 			stream_init(&xmstream->stm);

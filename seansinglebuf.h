@@ -26,6 +26,7 @@ unsigned int check_singlebuf(struct stsinglebufinfo *bufinfo, unsigned int needl
 //写入
 unsigned int write_to_singlebuf(struct stsinglebufinfo *bufinfo, unsigned char* data, unsigned int datalen);
 
+//读取buf里的数据，返回读取到的长度
 unsigned int read_from_singlebuf(struct stsinglebufinfo *bufinfo, unsigned char** data, unsigned int *datalen);
 
 

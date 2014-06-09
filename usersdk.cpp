@@ -11,12 +11,16 @@ void* JT_CALL_TYPE jt_create_device(unsigned int type)
 {
 	//没有就创建一个
 	struct device* dev = (struct device*)alloc_device(type);
-
+	
 	unique_lock_devicelist(__FUNCTION__);
  
 	if(dev && add_device(dev))
 	{
-		jtprintf("[jt_create_device]add_device %d\n", type);
+		jtprintf("[%s]add_device %d\n", __FUNCTION__, type);
+	}
+	else
+	{
+		jtprintf("[%s]add_device type %d failed, dev %p\n", __FUNCTION__, type, dev);
 	}
 
 	unlock_devicelist(__FUNCTION__);

@@ -102,7 +102,7 @@ void* func(void *)
 	}
 
 	//struct stLogin_Req req = {{"192.168.0.171"}, 34567, {"admin"}, {""}, NULL};
-	struct stLogin_Req req = {{"192.168.1.106"}, 8000, {"admin"}, {"admin"}, NULL};
+	struct stLogin_Req req = {{"192.168.0.100"}, 8000, {"admin"}, {"admin"}, NULL};
 	struct stLogin_Rsp rsp;
 	ret = jt_login(handle, &req, &rsp);
 	if(ret)

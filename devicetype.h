@@ -46,7 +46,6 @@
 #define ALARM_STREAM_DATA           0x0000000000000004
 #define RGB_STREAM_DATA             0x0000000000000008
 
-#define VIDEO_ENCODE_UNKNOW                                 0x0008
 #define VIDEO_ENCODE_JPEG                                   0x0010
 #define VIDEO_ENCODE_HIK_JPEG                               0x0011
 #define VIDEO_ENCODE_DAHUA_JPEG                             0x0012
@@ -62,7 +61,7 @@
 #define VIDEO_ENCODE_HIK_H264                               0x0081
 #define VIDEO_ENCODE_DAHUA_H264                             0x0082
 
-#define VIDEO_ENCODE_UNKOWN                                 0xF000
+#define VIDEO_ENCODE_UNKNOWN                                0xF000  //未知的编码格式
 
 
 #define UNKNOWN_FRAME                                        0
@@ -76,6 +75,9 @@
 #define AUDIO_OGG_VORBIT                                 12
 #define AUDIO_G276                                       13
 #define AUDIO_AAC                                        14
+#define AUDIO_PCM                                        15
+#define AUDIO_AMR                                        16
+
 
 #define AUDIO_ENCODE_UNKOWN                              9999
 

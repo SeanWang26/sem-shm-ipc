@@ -23,12 +23,13 @@
 
 struct dhdevice
 {
-	struct device 	dev;
-	LLONG    		loginid;
-	long			voicehandle;//对讲句柄
-	long            audiohandle;//              音频信息;
-	NET_DEVICEINFO  info;
-	int             ProtoVer;  //大华自己的网络协议版本号
+	struct device 	             dev;
+	LLONG    		             loginid;
+	long			             voicehandle;//对讲句柄
+	long                         audiohandle;//              音频信息;
+	NET_DEVICEINFO               info;
+	int                          ProtoVer;  //大华自己的网络协议版本号
+	DHDEV_SYSTEM_ATTR_CFG        sysconfig;
 };
 
 struct dhchannel
@@ -46,7 +47,8 @@ struct dhstream
 extern "C" int dh_lib_init();
 extern "C" struct dhdevice *dh_alloc_device();
 
-#define DH_INVALIDE_LOGINID    -1
-#define DH_INVALIDE_PLAYHANDLE -1
+#define DH_INVALIDE_HANDLE     0
+//#define DH_INVALIDE_LOGINID    0
+//#define DH_INVALIDE_PLAYHANDLE 0
 
 #endif

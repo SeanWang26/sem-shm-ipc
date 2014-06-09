@@ -17,8 +17,20 @@ inline int isrefrencefream(unsigned char byte)
 	return (0x1f&byte)==0x05;
 }
 
-//解析图像增强单元
-static int sn_paser_efi(char *indata, size_t inlen, char** outdata, int *outlen)
+//访问单元分隔符
+inline int is_access_unit_delimiter_sean(unsigned char byte)
+{
+	return byte==0x09;
+}
+
+//补充增强信息单元（SEI）
+inline int is_SEI_sean(unsigned char byte)
+{
+	return byte==0x06;
+}
+
+//补充信息增强单元解析
+static int paser_efi_sean(char *indata, size_t inlen, char** outdata, int *outlen)
 {
 	unsigned char efi_type = 0;
 	unsigned char efi_payload = 0;

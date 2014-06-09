@@ -5,6 +5,8 @@
 #include <time.h>
 
 #include "dhmanager.h"
+#include "../seansinglebuf.h"
+
 #include "../devicetype.h"
 #include "../jtprintf.h"
 
@@ -98,7 +100,68 @@ static DH_RealPlayType RealPlayTypeConvert(int Codec)
 	return DH_RType_Realplay_0;
 }
 
+#pragma pack(push,1)
+struct DhInnerHeadStruct
+{
+	char DHAV[4];	       //4 "DHAV"
+	int  PackgeType;       //8 PackgeType[0]主类型,FA, FB, FD, F1, FC  PackgeType[1]子类型，当主类型为F1(私有数据),PackgeType[1]为06
+	int  Seq;              //12 帧序号
+	int  PackLen;          //16 包长度,包括了头部和尾部长度
+	char timefield[6];     //22 时间部分
+	char UnkownField0;     //23 (还要继续验证)这个值表明了UnkownField1后的头部剩余数据长度，目前出现的基本上如是自动对焦的信息则为0x00,表明UnkownField1后就没有头部数据了，直接就是对焦数据了，水印时为0x08，表明还有8个字节的头部数据，其后就是水印数据了，i帧基本上是0x10,表明后面还有16个头部数据，p帧出现过0x08和0x10的情况，也就是说p帧时有可能是8个字节，有可能是16个字节
+	char UnkownField1;     //24 一直在变
+	
+	//char UnkownField2;     //25 出现过80,90,88三个值，i帧时基本是80，后面的8个字节估计是图像参数等信息(因为没有变化，修改图像参数后有变化)，水印包为0x88，此时UnkownField0基本上是为0x08，没有后面的图像参数的8个字节了，p帧出现过0x88和0x80，0x80同i帧，0x88时同水印包，自动对焦数据时为90，88
+	//char UnkownField3;     //26 未知
+	//char UnkownField4[2];  //28 和分辨率有关吧
+	//char UnkownField[12];  //还未分析出
+};
+//尾部8字节
+struct DhInnerTailStruct
+{
+	char DHAV[4];	    //"DHAV"
+	int  UnkownField1;  //一个值，在一个小范围内不断变化，可能是自动的对焦，光圈之类的调节值，通过附加在图像数据后传送，i帧和p帧的类型不一样
+};
+#pragma pack(pop)
+
+static inline int dh_vidoestreamfilter(unsigned char** data, DWORD *datalen, int key)
+{
+	//'\x44' '\x48' '\x41' '\x56'  D H A V
+	//'\x64' '\x68' '\x61' '\x76'  d h a v
+		struct DhInnerHeadStruct *Head = (DhInnerHeadStruct *)(*data);
+		if((Head->PackgeType&0xff)==0xf1)//大华的私有数据，过滤掉
+		{
+			return -1;
+		}
+		else if((Head->PackgeType&0xff)==0xfc || (Head->PackgeType&0xff)==0xfd)
+		{
+			 //h.264的i帧或p帧	
+			*data+= (Head->UnkownField0+sizeof(struct DhInnerHeadStruct));
+			*datalen-=(Head->UnkownField0+sizeof(struct DhInnerHeadStruct))+sizeof(struct DhInnerTailStruct);//在尾部还有dhav开头的8个字节
+			*stmtype = VIDEO_ENCODE_VIDEO_H264;//去掉头后就是标准的264了	
+		}
+		else if((Head->PackgeType&0xff)==0xfa || (Head->PackgeType&0xff)==0xfb)
+		{
+			//mpeg4????
+			if (ICMS_DEFINE_SUBTYPE_FRAME_I==key)
+			{
+				*data += 16;
+				*datalen -= 16;
+			}
+			else
+			{
+				*data += 8;
+				*datalen -= 8;
+			}
+
+			*stmtype = 2;			
+		}
+
+	return 0;
+}
+
 /**/
+#if 0
 static void dh_real_data_callback_v2(LLONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, LDWORD dwUser)
 {
 	//lock
@@ -149,6 +212,7 @@ static void dh_real_data_callback_v2(LLONG lRealHandle, DWORD dwDataType, BYTE *
 */
 	// it must return TRUE if decode successfully,or the SDK will consider the decode is failed
 }
+#endif
 void dh_talk_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, char byAudioFlag, long dwUser)
 {
 	//lock
@@ -182,41 +246,50 @@ void dh_talk_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, cha
 	//BOOL bResult = TRUE;
 }
 
-static inline int dh_handle_alarm(dhdevice *device, char *pBuf, unsigned long dwBufLen)
+static inline int dh_handle_alarm(dhdevice *device, LONG lCommand, char *pBuf, unsigned long dwBufLen)
 {
-	/*SDK_AlarmInfo alarmInfo;
-	memcpy (&alarmInfo, pBuf, dwBufLen); 	
+	int reason = ALARM_TYPE_UNKNOWN;
 
-	if ( SDK_EVENT_CODE_NET_ALARM == alarmInfo.iEvent 
-		|| SDK_EVENT_CODE_MANUAL_ALARM == alarmInfo.iEvent 
-		|| SDK_EVENT_CODE_LOCAL_ALARM == alarmInfo.iEvent )
+	if(lCommand==DH_ALARM_ALARM_EX)//报警输入报警
 	{
 		
 	}
-	else if ( SDK_EVENT_CODE_VIDEO_MOTION == alarmInfo.iEvent ) 
+	else if (lCommand==DH_MOTION_ALARM_EX) //移动侦测报警
 	{
-		jtprintf("[%s]SDK_EVENT_CODE_VIDEO_MOTION\n", __FUNCTION__);
+		reason = ALARM_TYPE_VIDEO_MOTION;
 	}
-	else if ( SDK_EVENT_CODE_VIDEO_LOSS == alarmInfo.iEvent  )
+	else if(lCommand==DH_VIDEOLOST_ALARM_EX)//视频丢失报警
 	{
-	
+		reason = ALARM_TYPE_VIDEO_LOSS;
 	}
-	else if ( SDK_EVENT_CODE_VIDEO_BLIND == alarmInfo.iEvent )
+	else if(lCommand==DH_SHELTER_ALARM_EX)//遮挡报警
 	{
-	
+		reason = ALARM_TYPE_VIDEO_BLIND;
 	}
-	else if ( SDK_EVENT_CODE_STORAGE_FAILURE == alarmInfo.iEvent )
+	
+	if(reason==ALARM_TYPE_UNKNOWN)
 	{
-		
+		jtprintf("[%s]reason==ALARM_TYPE_UNKNOWN\n", __FUNCTION__);
+		return 0;
 	}
-	else if ( SDK_EVENT_CODE_LOW_SPACE == alarmInfo.iEvent  )
+	
+	st_stream_data alarm;
+	alarm.streamtype = ALARM_STREAM_DATA;
+	alarm.stream_info.alarm_stream_info.reason = reason;
+
+	for(unsigned long i=0 ; i<dwBufLen; ++i)
 	{
-		
-	}*/
-	
-	//if(device->dev.alarmcallback)
-	//	device->dev.alarmcallback(device->dev.alarmuserdata);
-	
+		if(pBuf[i])
+		{
+			jtprintf("[%s]channel %u has alarm %d\n", __FUNCTION__, i, reason);
+			alarm.stream_info.alarm_stream_info.channelid = i;
+
+			if(device->dev.alarmcallback)
+				device->dev.alarmcallback(CALLBACK_TYPE_ALARM_STREAM, &alarm, &device->dev.alarmuserdata);
+		}
+
+	}
+
 	return 0;
 }
 
@@ -231,7 +304,7 @@ static BOOL dh_mess_callback(LONG lCommand, LLONG lLoginID, char *pBuf, DWORD dw
 		{	
 			if(((dhdevice*)device)->loginid == lLoginID)
 			{				
-				dh_handle_alarm((dhdevice*)device, pBuf, dwBufLen);
+				dh_handle_alarm((dhdevice*)device, lCommand, pBuf, dwBufLen);
 				break;
 			}
 		}
@@ -239,164 +312,267 @@ static BOOL dh_mess_callback(LONG lCommand, LLONG lLoginID, char *pBuf, DWORD dw
 	
 	return 1;
 }
+static BYTE dh_fps_convert(struct dhdevice *dhdev, BYTE fps)
+{
+	BYTE _fps = 20;
+	if(dhdev->ProtoVer>=5 && dhdev->sysconfig.byVideoStandard == 0)
+	{
+		_fps = fps;
+	}
+	else if(dhdev->ProtoVer>=5 && dhdev->sysconfig.byVideoStandard == 1)
+	{
+		_fps = fps;
+	}
+	else if(dhdev->ProtoVer<5 && dhdev->sysconfig.byVideoStandard == 0)
+	{
+		switch(fps)
+		{
+			case 1:
+				_fps = 1;
+			break;
+			case 2:
+				_fps = 2;
+			break;	
+			case 3:
+				_fps = 3;
+			break;	
+			case 4:
+				_fps = 6;
+			break;	
+			case 5:
+				_fps = 12;
+			break;	
+			case 6:
+				_fps = 25;
+			break;	
+		}
+	}
+	else if(dhdev->ProtoVer<5 && dhdev->sysconfig.byVideoStandard == 1)
+	{
+		switch(fps)
+		{
+			case 1:
+				_fps = 1;
+			break;
+			case 2:
+				_fps = 2;
+			break;
+			case 3:
+				_fps = 3;
+			break;
+			case 4:
+				_fps = 7;
+			break;
+			case 5:
+				_fps = 15;
+			break;
+			case 6:
+				_fps = 20;
+			break;
+			case 7:
+				_fps = 30;
+			break;
+		}
+	}
+	else
+	{
+		_fps = fps;
+	}
+
+	return _fps;
+}
 
 static int dh_resolution_convert(int resolution, int *width, int *height)
 {
-	//jtprintf("[%s]type %d\n", __FUNCTION__, resolution);
-
-/*	switch(resolution)
+	jtprintf("[%s]resolution type %d\n", __FUNCTION__, resolution);
+	switch(resolution)
 	{
-		case SDK_CAPTURE_SIZE_D1:
+		case DH_CAPTURE_SIZE_D1:
 			*width = 720;
 			*height = 576;
 		break;
-		case SDK_CAPTURE_SIZE_HD1:
+		case DH_CAPTURE_SIZE_HD1:
 			*width = 352;
 			*height = 480;		
 		break;
-		case SDK_CAPTURE_SIZE_BCIF:
+		case DH_CAPTURE_SIZE_BCIF:
 			*width = 720;
 			*height = 288;	
 		break;
-		case SDK_CAPTURE_SIZE_CIF:
+		case DH_CAPTURE_SIZE_CIF:
 			*width = 352;
 			*height = 288;	
 		break;
-		case SDK_CAPTURE_SIZE_QCIF:
+		case DH_CAPTURE_SIZE_QCIF:
 			*width = 176;
 			*height = 144;			
 		break;
-		case SDK_CAPTURE_SIZE_VGA:
+		case DH_CAPTURE_SIZE_VGA:
 			*width = 640;
 			*height = 480;				
 		break;
-		case SDK_CAPTURE_SIZE_QVGA:
+		case DH_CAPTURE_SIZE_QVGA:
 			*width = 480;
 			*height = 480;	
 		break;
-		case SDK_CAPTURE_SIZE_QQVGA:
+		case DH_CAPTURE_SIZE_QQVGA:
 			*width = 160;
 			*height = 128;	
 		break;
-		case SDK_CAPTURE_SIZE_ND1:
-			*width = 240;
-			*height = 192;				
-		break;
-		case SDK_CAPTURE_SIZE_650TVL:
-			*width = 926;
-			*height = 576;				
-		break;
-		case SDK_CAPTURE_SIZE_720P:
+		case DH_CAPTURE_SIZE_720:
 			*width = 1280;
 			*height = 720;				
 		break;
-		case SDK_CAPTURE_SIZE_1_3M:		  ///< 1280*960
+		case DH_CAPTURE_SIZE_1_3M:		  ///< 1280*960
 			*width = 1280;
 			*height = 960;			
 		break;
-		case SDK_CAPTURE_SIZE_UXGA: 	  ///< 1600*1200
+		case DH_CAPTURE_SIZE_UXGA: 	  ///< 1600*1200
 			*width = 1600;
 			*height = 1200;			
 		break;
-		case SDK_CAPTURE_SIZE_1080P: 	  ///< 1920*1080
+		case DH_CAPTURE_SIZE_1080: 	  ///< 1920*1080
 			*width = 1920;
-			*height = 1080;			
+			*height = 1080;
 		break;
-		case SDK_CAPTURE_SIZE_WUXGA: 	  ///< 1920*1200
+		case DH_CAPTURE_SIZE_WUXGA: 	  ///< 1920*1200
 			*width = 1920;
 			*height = 1200;			
 		break;
-		case SDK_CAPTURE_SIZE_2_5M:		  ///< 1872*1408
+		case DH_CAPTURE_SIZE_5M:		  ///< 1872*1408
 			*width = 1872;
 			*height = 1408;			
 		break;
-		case SDK_CAPTURE_SIZE_3M:		  ///< 2048*1536
+		case DH_CAPTURE_SIZE_3M:		  ///< 2048*1536
 			*width = 2048;
 			*height = 1536;			
 		break;
-		case SDK_CAPTURE_SIZE_5M:		  ///< 3744*1408
-			*width = 3744;
-			*height = 1408;			
+		//case DH_CAPTURE_SIZE_5M:		  ///< 3744*1408
+		//	*width = 3744;
+		//	*height = 1408;			
+		//break;
+		case DH_CPTRUTE_SIZE_2560_1920:
+			*width = 2560;
+			*height = 1920;	
+		break;
+		case DH_CPTRUTE_SIZE_1408_1024:
+			*width = 1408;
+			*height = 1024;
+		break;
+		case DH_CAPTURE_SIZE_960_720:
+			*width = 960;
+			*height = 720;			
 		break;
 		default:
+			jtprintf("[%s]resolution %d unknown\n", __FUNCTION__, resolution);
 			*width = 0;
 			*height = 0;
 		return -1;
-	}*/
+	}
 
 	return 0;
 }
 
-static int dh_get_encode_mode(int type)
+static int dh_get_encode_mode(BYTE type)
 {
-	/*switch(type)
+	switch(type)
 	{
-		case SDK_CAPTURE_COMP_DIVX_MPEG4:	///< DIVX MPEG4。
+		case DH_CAPTURE_COMP_DIVX_MPEG4:	///< DIVX MPEG4。
 			return type;
 		break;
-		case SDK_CAPTURE_COMP_MS_MPEG4:		///< MS MPEG4。
+		case DH_CAPTURE_COMP_MS_MPEG4:		///< MS MPEG4。
 			return type;
 		break;
-		case SDK_CAPTURE_COMP_MPEG2: 		///< MPEG2。
+		case DH_CAPTURE_COMP_MPEG2: 		///< MPEG2。
 			return type;
 		break;
-		case SDK_CAPTURE_COMP_MPEG1: 		///< MPEG1。
+		case DH_CAPTURE_COMP_MPEG1: 		///< MPEG1。
 			return type;
 		break;
-		case SDK_CAPTURE_COMP_H263:			///< H.263
+		case DH_CAPTURE_COMP_H263:			///< H.263
 			return type;
 		break;
-		case SDK_CAPTURE_COMP_MJPG:			///< MJPG
+		case DH_CAPTURE_COMP_MJPG:			///< MJPG
 			return VIDEO_ENCODE_JPEG;
 		break;
-		case SDK_CAPTURE_COMP_FCC_MPEG4:	///< FCC MPEG4
+		case DH_CAPTURE_COMP_FCC_MPEG4:	///< FCC MPEG4
 			return VIDEO_ENCODE_VIDEO_MPEG4;
 		break;
-		case SDK_CAPTURE_COMP_H264:			///< H.264
+		case DH_CAPTURE_COMP_H264:			///< H.264
 			return VIDEO_ENCODE_VIDEO_H264;
 		break;
-	}*/
+	}
 
 	return 0;
 }
-static int dh_fill_encode_info(struct device* dev, DHDEV_PREVIEW_CFG *EncodeConfig)
+
+int dh_audio_encode_convert(int type)
+{
+	 // 音频编码类型: 0:G711A,1:PCM,2:G711U,3:AMR,4:AAC
+	 switch(type)
+	 {
+		case 0: //
+			return AUDIO_G711A;
+		case 1:	 //
+			return AUDIO_PCM;
+		case 2:		 //
+			return AUDIO_G711U;
+		case 3:		 //
+			return AUDIO_AMR;
+		case 4:		 //
+			return AUDIO_AAC;
+		default:
+			return AUDIO_ENCODE_UNKOWN;
+	 }
+	 
+	 return 0;
+}
+
+static int dh_fill_encode_info(struct device* dev, DHDEV_CHANNEL_CFG *EncodeConfig)
 {
 	dev->encodeinfo.last_get_time = time(0);
 
 	//memset????
-	
 	for(int i=0; i<MAX_CHANNEL_ENCODE_INFO &&  i<DH_MAX_CHANNUM; ++i)
 	{
 		//主
-		/*dev->encodeinfo.encode_info[i].mainencode.enable = EncodeConfig[i].dstMainFmt.bVideoEnable;
-		dev->encodeinfo.encode_info[i].mainencode.encodetype 
-			= dh_get_encode_mode(EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iCompression);
-		dev->encodeinfo.encode_info[i].mainencode.fps = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.nFPS;
+		dev->encodeinfo.ch_encode_info[i].mainencode.enable = EncodeConfig[i].stMainVideoEncOpt[0].byVideoEnable;
+		dev->encodeinfo.ch_encode_info[i].mainencode.encodetype 
+			= dh_get_encode_mode(EncodeConfig[i].stMainVideoEncOpt[0].byEncodeMode);
+		dev->encodeinfo.ch_encode_info[i].mainencode.fps = dh_fps_convert((struct dhdevice* )dev, EncodeConfig[i].stMainVideoEncOpt[0].byFramesPerSec);
 
-		dh_resolution_convert(EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iResolution
-							, &dev->encodeinfo.encode_info[i].mainencode.width
-							, &dev->encodeinfo.encode_info[i].mainencode.height);
+		dh_resolution_convert(EncodeConfig[i].stMainVideoEncOpt[0].byImageSize
+							, &dev->encodeinfo.ch_encode_info[i].mainencode.width
+							, &dev->encodeinfo.ch_encode_info[i].mainencode.height);
 
-		dev->encodeinfo.encode_info[i].mainencode.quality = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iQuality;
-		dev->encodeinfo.encode_info[i].mainencode.bitrate = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.nBitRate;
-		dev->encodeinfo.encode_info[i].mainencode.bitratectl = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iBitRateControl;
-		dev->encodeinfo.encode_info[i].mainencode.gop = EncodeConfig->vEncodeConfigAll[i].dstMainFmt.vfFormat.iGOP;
+		dev->encodeinfo.ch_encode_info[i].mainencode.quality = EncodeConfig[i].stMainVideoEncOpt[0].byImageQlty;
+		dev->encodeinfo.ch_encode_info[i].mainencode.bitrate = EncodeConfig[i].stMainVideoEncOpt[0].wLimitStream;
+		dev->encodeinfo.ch_encode_info[i].mainencode.bitratectl = EncodeConfig[i].stMainVideoEncOpt[0].byBitRateControl;
+		dev->encodeinfo.ch_encode_info[i].mainencode.gop = EncodeConfig[i].stMainVideoEncOpt[0].bIFrameInterval;
 
 		//辅1
-		dev->encodeinfo.encode_info[i].sub1encode.enable = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.bVideoEnable;
-		dev->encodeinfo.encode_info[i].sub1encode.encodetype 
-			= dh_get_encode_mode(EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iCompression);
-		dev->encodeinfo.encode_info[i].sub1encode.fps = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.nFPS;
-		
-		dh_resolution_convert(EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iResolution
-							, &dev->encodeinfo.encode_info[i].sub1encode.width
-							, &dev->encodeinfo.encode_info[i].sub1encode.height);
-		
-		dev->encodeinfo.encode_info[i].sub1encode.quality = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iQuality;
-		dev->encodeinfo.encode_info[i].sub1encode.bitrate = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.nBitRate;
-		dev->encodeinfo.encode_info[i].sub1encode.bitratectl = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iBitRateControl;
-		dev->encodeinfo.encode_info[i].sub1encode.gop = EncodeConfig->vEncodeConfigAll[i].dstExtraFmt.vfFormat.iGOP;
-	*/}
+		dev->encodeinfo.ch_encode_info[i].sub1encode.enable = EncodeConfig[i].stMainVideoEncOpt[0].byVideoEnable;
+		dev->encodeinfo.ch_encode_info[i].sub1encode.encodetype 
+			= dh_get_encode_mode(EncodeConfig[i].stMainVideoEncOpt[0].byEncodeMode);
+		dev->encodeinfo.ch_encode_info[i].sub1encode.fps = dh_fps_convert((struct dhdevice *)dev, EncodeConfig[i].stMainVideoEncOpt[0].byFramesPerSec);
+
+		dh_resolution_convert(EncodeConfig[i].stMainVideoEncOpt[0].byImageSize
+							, &dev->encodeinfo.ch_encode_info[i].sub1encode.width
+							, &dev->encodeinfo.ch_encode_info[i].sub1encode.height);
+
+		dev->encodeinfo.ch_encode_info[i].sub1encode.quality = EncodeConfig[i].stAssiVideoEncOpt[0].byImageQlty;
+		dev->encodeinfo.ch_encode_info[i].sub1encode.bitrate = EncodeConfig[i].stAssiVideoEncOpt[0].wLimitStream;
+		dev->encodeinfo.ch_encode_info[i].sub1encode.bitratectl = EncodeConfig[i].stAssiVideoEncOpt[0].byBitRateControl;
+		dev->encodeinfo.ch_encode_info[i].sub1encode.gop = EncodeConfig[i].stAssiVideoEncOpt[0].bIFrameInterval;
+
+		//音频
+		dev->encodeinfo.ch_encode_info[i].audioencode.enable = EncodeConfig[i].stAssiVideoEncOpt[0].byAudioEnable;
+		dev->encodeinfo.ch_encode_info[i].audioencode.encodetype = dh_audio_encode_convert(EncodeConfig[i].stAssiVideoEncOpt[0].wFormatTag);
+		dev->encodeinfo.ch_encode_info[i].audioencode.frequency = EncodeConfig[i].stAssiVideoEncOpt[0].nSamplesPerSec;//
+		//dev->encodeinfo.ch_encode_info[i].audioencode.bitrate = EncodeConfig[i].stAssiVideoEncOpt[0].nBitRate;
+		dev->encodeinfo.ch_encode_info[i].audioencode.channel = EncodeConfig[i].stAssiVideoEncOpt[0].nChannels;
+		dev->encodeinfo.ch_encode_info[i].audioencode.depth = EncodeConfig[i].stAssiVideoEncOpt[0].wBitsPerSample;
+	}
 
 	return 0;
 };
@@ -461,7 +637,7 @@ static int dh_device_init(struct dhdevice *dev)
 		{
 			struct dhstream* dhstream = (struct dhstream*)stream;
 			assert(dhstream->stm.obj.type == OBJECT_TYPE_STREAM);
-			dhstream->currentencode = VIDEO_ENCODE_UNKNOW;
+			dhstream->currentencode = VIDEO_ENCODE_UNKNOWN;
 			dhstream->playhandle = DH_INVALIDE_PLAYHANDLE;
 
 			stream_init(&dhstream->stm);
@@ -507,11 +683,25 @@ static int dh_login(struct device *dev, struct stLogin_Req *req, struct stLogin_
 	if(dhdev->loginid)
 	{
 		int outlen=0;
-		CLIENT_QueryDevState(dhdev->loginid, DH_DEVSTATE_PROTOCAL_VER, (char*)&dhdev->ProtoVer, sizeof(dhdev->ProtoVer), &outlen, 1000);
-
+		if(CLIENT_QueryDevState(dhdev->loginid, DH_DEVSTATE_PROTOCAL_VER, (char*)&dhdev->ProtoVer, sizeof(dhdev->ProtoVer), &outlen, 1000))
+		{
+			jtprintf("[%s]CLIENT_QueryDevState ok\n", __FUNCTION__);
+		}
+		else
+		{
+			jtprintf("[%s]CLIENT_QueryDevState failed\n", __FUNCTION__);
+		}
+		
 		rsp->DeviceHandle = (long long)dhdev;
 		jtprintf("[%s]dhdev login success, %s, %d, %s, %s, %ld, pro %d\n"
 			, __FUNCTION__, dev->ip, dev->port, dev->user, dev->password, dhdev->loginid, dhdev->ProtoVer);
+
+		DHDEV_SYSTEM_ATTR_CFG sysconfig;
+		DWORD dwRet;
+		if(!CLIENT_GetDevConfig(dhdev->loginid, DH_DEV_DEVICECFG, -1, &dhdev->sysconfig, sizeof(DHDEV_SYSTEM_ATTR_CFG), &dwRet, 1000))
+		{
+			jtprintf("[%s]CLIENT_QueryDevState failed\n", __FUNCTION__);
+		}
 
 		return SUCCESS;
 	}
@@ -556,7 +746,7 @@ static int dh_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 	return -2;
 }
 
-static int dosaveraw( unsigned char* data, int len)
+static int dosaveraw(unsigned char* data, int len)
 {
 	static FILE* fp=fopen("/home/raw.bin", "wb+");;
 	if(fp==NULL)
@@ -567,9 +757,44 @@ static int dosaveraw( unsigned char* data, int len)
 
 void CALLBACK Static_RealDataCallBackEx(LLONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, LONG param, LDWORD dwUser)
 {
-	//jtprintf("[%s]fRealDataCallBackEx\n", __FUNCTION__);
 	//dosaveraw(pBuffer, dwBufSize);
+	if(dwDataType==0)
+	{
+		if(pBuffer[0]==44 && pBuffer[1]==48 && pBuffer[2]==41 && pBuffer[3]==56)//大华的包头特征码
+		{
+			assert(dwBufSize>40);
+			struct DhInnerHeadStruct *head = (struct DhInnerHeadStruct *)pBuffer;
+			head->PackLen
 
+			if((head->PackgeType&0xff)==0xfc)//p帧
+			{
+				
+			}
+			else if(head->PackgeType&0xff)==0xfd)//i帧
+			{
+
+			}
+			
+		}
+		else//非包头，一个大包的分片数据
+		{
+
+		}
+	}
+	else if(dwDataType==1)
+	{
+
+	}
+	else if(dwDataType==2)
+	{
+
+	}
+	else if(dwDataType==3)
+	{
+
+	}
+
+	return 0;
 	/*jtprintf("[fream head, before]type %d, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, (%d)\n"
 											, dwDataType, pBuffer[0], pBuffer[1]
 											, pBuffer[2], pBuffer[3]
@@ -645,14 +870,15 @@ static int dh_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	if(stm == NULL)
 	{
 		//add stream
-		stm = (struct dhstream*)alloc_stream(sizeof(struct dhstream), req->Codec);
+		stm = (struct hkstream*)alloc_stream_with_videobuf(sizeof(struct hkstream), req->Codec, 1024*1024);
 		if(stm)
 		{
 			if((struct stream*)stm != add_stream((channel*)chn, (struct stream*)stm))
 			{
 				jtprintf("[%s]add_stream old??\n", __FUNCTION__);
-				free(stm);
-				stm = NULL;
+				assert(false);
+				//free(stm);
+				//stm = NULL;
 				//stm = old;
 			}
 		}
@@ -666,9 +892,14 @@ static int dh_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	jtprintf("[%s]before H264_DVR_RealPlay %ld, channel %d, nStream %d\n"
 			, __FUNCTION__, dhdev->loginid, req->Channel, req->Codec);
 
+	clear_singlebuf(&stm->stm.videobuf);
+
 	long handle = CLIENT_RealPlayEx(dhdev->loginid, req->Channel, NULL, RealPlayTypeConvert(req->Codec));	
 	if(handle == 0)
 	{
+		stm->playhandle = DH_INVALIDE_HANDLE;
+		stm->stm.pulling = 0;
+		
 		jtprintf("[%s]start real stream wrong! m_iPlayhandle %ld, channel %d, nStream %d\n"
 			, __FUNCTION__, handle, req->Channel, req->Codec);
 		return OPEN_VIDEO_STREAM_FAILED;
@@ -717,25 +948,6 @@ static int dh_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 
 	struct dhchannel* chn = NULL;
 	struct dhstream* stm = NULL;
-	/*chn = (struct dhchannel*)get_channel(&dev->channels, req->Channel);
-	if(chn == NULL)
-	{
-		jtprintf("[%s]chn null\n", __FUNCTION__, chn);
-		return INVALID_CHANNEL_NO;
-	}
-	
-	stm = (struct dhstream*)get_stream(&chn->chn.streams, (struct stream*)req->StreamHandle);
-	if(stm == NULL)
-	{
-		return INVALID_STREAM_NO;
-	}
-
-	if((long)stm != req->StreamHandle)
-	{
-		//should we using stm to close it???
-		assert(false);
-	}
-*/
 
 	stm = (struct dhstream*)get_stream_by_dev(dev, (struct stream*)req->StreamHandle);
 	if(stm==NULL)
@@ -744,11 +956,23 @@ static int dh_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 		return INVALID_STREAM_NO_FAILED;
 	}
 
+	if(stm->playhandle==DH_INVALIDE_HANDLE)
+	{
+		jtprintf("[%s]stm->playhandle==0, aready closed\n", __FUNCTION__);
+		stm->stm.pulling = 0;
+		stm->playhandle = 0L;
+		stm->stm.callback = NULL;
+		stm->stm.llbegintime = 0;
+		return SUCCESS;
+	}
+
 	if(CLIENT_SetRealDataCallBack(stm->playhandle, NULL, 0)==0)
 	{
 		jtprintf("[%s]set video callback failed!\n", __FUNCTION__);
 		//return SET_VIDEO_CALLBACK_FAILED;
 	}
+
+	clear_singlebuf(&stm->stm.videobuf);
 
 	if(CLIENT_StopRealPlayEx(stm->playhandle))
 	{
@@ -758,7 +982,7 @@ static int dh_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 			stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM_CLOSEED, SUCCESS, &stm->stm.userdata);
 
 		stm->stm.pulling = 0;
-		stm->playhandle = DH_INVALIDE_PLAYHANDLE;
+		stm->playhandle = DH_INVALIDE_HANDLE;
 		stm->stm.callback = NULL;
 	}
 	else
@@ -916,8 +1140,8 @@ static int dh_get_config(struct device *dev, struct stGetConfig_Req *req, struct
 				jtprintf("[%s]re get encode info\n", __FUNCTION__);
 
 				DWORD dwRet = 0;
-				DHDEV_PREVIEW_CFG EncodeConfig[32] = {0};
-				if (CLIENT_GetDevConfig(dhdev->loginid, DH_DEV_PREVIEWCFG, -1, EncodeConfig, sizeof(EncodeConfig[32]), &dwRet, 3000))
+				DHDEV_CHANNEL_CFG EncodeConfig[32] = {0};
+				if (CLIENT_GetDevConfig(dhdev->loginid, DH_DEV_CHANNELCFG, -1, EncodeConfig, sizeof(EncodeConfig[32]), &dwRet, 3000))
 				{
 					dh_fill_encode_info((struct device*)dhdev, EncodeConfig);
 					//获取成功
@@ -984,7 +1208,7 @@ static int dh_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 		jtprintf("[%s]dhdev H264_DVR_SetupAlarmChan ok\n", __FUNCTION__);
 	}
 	else
-	{	
+	{
 		dev->alarmcallback = NULL;
 		if(dev->alarmuserdata)
 		{

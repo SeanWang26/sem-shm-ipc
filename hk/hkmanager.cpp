@@ -170,7 +170,8 @@ static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType
 	*/
 
 	if(dwDataType == NET_DVR_STREAMDATA)
-	{
+	{	
+		//海康默认返回最大0x8000个数据,多的分到多个pes包
 		struct hk_ps_pack_start_code *startcode = (struct hk_ps_pack_start_code *)pBuffer;
 		if(startcode->stream_id[0] == 0xba)
 		{
@@ -190,7 +191,7 @@ static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType
 					, vdata[5], vdata[6], vdata[7], vdata[8] ,vdata[9]
 					, vdata[10], vdata[11], vdata[12], vdata[13] , vdata[14]
 					, vdata[15], vdata[16], vdata[17], vdata[18] , vdata[19]);
-*/
+                */
 				struct channel* chn = (struct channel*)stream->stm.obj.parent;
 				struct device* dev = (struct device*)chn->obj.parent;
 		
@@ -922,7 +923,7 @@ static int hk_get_encode_mode(int type)
 			return VIDEO_ENCODE_JPEG;
 		break;
 		default:
-			return VIDEO_ENCODE_UNKOWN;
+			return VIDEO_ENCODE_UNKNOWN;
 	}
 
 	return 0;
@@ -1069,7 +1070,7 @@ static int hk_fill_ch_encode_info(struct device* dev, int channel, NET_DVR_COMPR
 	//音频
 	dev->encodeinfo.ch_encode_info[channel].audioencode.encodetype = hk_audio_encode_convert(EncodeConfig->struNormHighRecordPara.byAudioEncType);
 	dev->encodeinfo.ch_encode_info[channel].audioencode.frequency = 8000;
-	dev->encodeinfo.ch_encode_info[channel].audioencode.bitrate = 25*1024;
+	dev->encodeinfo.ch_encode_info[channel].audioencode.bitrate = 16000;
 	dev->encodeinfo.ch_encode_info[channel].audioencode.channel = 1;
 	dev->encodeinfo.ch_encode_info[channel].audioencode.depth = 16;
 
@@ -1162,7 +1163,7 @@ static int hk_device_init(struct hkdevice *dev)
 			struct hkstream* hkstream = (struct hkstream*)stream;
 			assert(hkstream->stm.obj.type == OBJECT_TYPE_STREAM);
 
-			hkstream->currentencode = VIDEO_ENCODE_UNKNOW;
+			hkstream->currentencode = VIDEO_ENCODE_UNKNOWN;
 			hkstream->playhandle = HK_INVALIDE_HANDLE;
 
 			stream_init(&hkstream->stm);
@@ -1387,6 +1388,8 @@ static int hk_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	///////playstru.byStreamID = 0;
 	playstru.byProtoType = 0;
 
+	stm->stm.pulling = 0;
+
 	//方便用户修改上一次的 userdata数据
 	if(stm->stm.callback)
 		stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM_OPENED, NULL, &stm->stm.userdata);
@@ -1458,7 +1461,7 @@ static int hk_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 
 	if(stm->playhandle==HK_INVALIDE_PLAYHANDLE)
 	{
-		jtprintf("[%s]stm->playhandle==0, aready closed\n", __FUNCTION__);
+		jtprintf("[%s]stm->playhandle==-1, aready closed\n", __FUNCTION__);
 		stm->stm.pulling = 0;
 		stm->playhandle = 0L;
 		stm->stm.callback = NULL;
