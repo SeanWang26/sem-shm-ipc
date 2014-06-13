@@ -75,7 +75,7 @@ static void CALL_METHOD xm_sub_disconnect_callBack(long lLoginID, SubConnType ty
 	FIND_DEVICE_BEGIN(struct xmdevice,DEVICE_XM)
 	{
 		if(dev->loginid == lLoginID)
-		{
+		{	
 			jtprintf("[%s]%p, %s, %lu\n", __FUNCTION__, (void*)dwUser, type, nChannel);
 			break;
 		}
@@ -107,6 +107,25 @@ static int xm_pack_type_convert(enum MEDIA_PACK_TYPE type)
 	*/
 	return UNKNOWN_FRAME;
 }
+static int dosaveraw(unsigned char* data, int len)
+{
+	static FILE* fp=fopen("/home/raw.bin", "wb+");;
+	if(fp==NULL)
+		return -1;
+
+	return fwrite(data,len,1,fp);
+}
+#pragma pack(push,1)
+struct XmInnerHeadStruct
+{
+//0  0  1 fd 2a 14  0  0    0  0  0  1 61
+//0  0  1 fc  2 19 a0 5a c4 52 9a 39 2a 2a  0  0  0  0  0  1 67
+	char StartCode[3];	   //00 00 01
+	char PackgeType;       //fd非i帧，fc为i帧标识
+	char Pad[8];     //    //为i帧时有这8个字节
+	int  Len;              //后面的数据长度
+};
+#pragma pack(pop)
 
 static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFrame, unsigned int dwUser)
 {
@@ -150,6 +169,8 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 		unsigned int	   Reserved[6]; 		   //保留
 	} PACKET_INFO_EX;*/
 
+	st_stream_data stmdata;
+
 	if(pFrame->nPacketType == VIDEO_P_FRAME  
 		|| pFrame->nPacketType == VIDEO_I_FRAME 
 		|| pFrame->nPacketType == VIDEO_B_FRAME
@@ -157,13 +178,34 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 		|| pFrame->nPacketType == VIDEO_BBP_FRAME
 		|| pFrame->nPacketType == VIDEO_J_FRAME)
 	{
+
+		//dosaveraw((unsigned char*)pFrame->pPacketBuffer, pFrame->dwPacketSize);
+	
+		/*jtprintf("[%s]pulling %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+			, __FUNCTION__, stream->stm.pulling, pFrame->dwPacketSize
+			, (unsigned char)pFrame->pPacketBuffer[0], (unsigned char)pFrame->pPacketBuffer[1], (unsigned char)pFrame->pPacketBuffer[2], (unsigned char)pFrame->pPacketBuffer[3], (unsigned char)pFrame->pPacketBuffer[4]
+			, (unsigned char)pFrame->pPacketBuffer[5], (unsigned char)pFrame->pPacketBuffer[6], (unsigned char)pFrame->pPacketBuffer[7], (unsigned char)pFrame->pPacketBuffer[8] , (unsigned char)pFrame->pPacketBuffer[9]
+			, (unsigned char)pFrame->pPacketBuffer[10], (unsigned char)pFrame->pPacketBuffer[11], (unsigned char)pFrame->pPacketBuffer[12], (unsigned char)pFrame->pPacketBuffer[13] , (unsigned char)pFrame->pPacketBuffer[14]
+			, (unsigned char)pFrame->pPacketBuffer[15], (unsigned char)pFrame->pPacketBuffer[16], (unsigned char)pFrame->pPacketBuffer[17], (unsigned char)pFrame->pPacketBuffer[18] , (unsigned char)pFrame->pPacketBuffer[19]
+			, (unsigned char)pFrame->pPacketBuffer[20], (unsigned char)pFrame->pPacketBuffer[21], (unsigned char)pFrame->pPacketBuffer[22], (unsigned char)pFrame->pPacketBuffer[23] , (unsigned char)pFrame->pPacketBuffer[24]
+			, (unsigned char)pFrame->pPacketBuffer[pFrame->dwPacketSize-1]);
+*/
+
 		struct channel* chn = (struct channel*)stream->stm.obj.parent;
 		struct device* dev = (struct device*)chn->obj.parent;
 
-		st_stream_data stmdata;
 		stmdata.streamtype = VIDEO_STREAM_DATA;
-		stmdata.pdata= pFrame->pPacketBuffer+8;
-		stmdata.datalen = pFrame->dwPacketSize-8;
+
+		if(pFrame->nPacketType == VIDEO_I_FRAME)
+		{
+			stmdata.pdata= pFrame->pPacketBuffer+16;
+			stmdata.datalen = pFrame->dwPacketSize-16;
+		}
+		else
+		{
+			stmdata.pdata= pFrame->pPacketBuffer+8;
+			stmdata.datalen = pFrame->dwPacketSize-8;
+		}
 		
 		stmdata.stream_info.video_stream_info.frametype = xm_pack_type_convert((enum MEDIA_PACK_TYPE)pFrame->nPacketType);
 
@@ -219,7 +261,7 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 		{
 			//jtprintf("[%s]AUDIO_PACKET %d, pFrame->dwPacketSize %d\n", __FUNCTION__, stream->stm.id, pFrame->dwPacketSize);
 
-			st_stream_data stmdata;
+			
 			stmdata.streamtype = AUDIO_STREAM_DATA;
 			stmdata.pdata= pFrame->pPacketBuffer+8;
 			stmdata.datalen = pFrame->dwPacketSize-8;
@@ -249,7 +291,8 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 }
 void xm_audio_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, char byAudioFlag, long dwUser)
 {
-	jtprintf("[%s]enter\n", __FUNCTION__);
+	//打开音频这里也有数据，但是我们还是从xm_real_data_callback_v2里得到数据
+	//jtprintf("[%s]enter\n", __FUNCTION__);
 	//lock
 	//struct xmdevice
 	//jtprintf("[%s]lTalkHandle %ld, dwBufSize %d, byAudioFlag %d\n"
@@ -331,11 +374,18 @@ void* xm_send_talk_data_thread(void* user)
 */
 	return NULL;
 }
+static int xm_channelnum_convert(struct xmdevice* dev, int channelnum)
+{
+	return channelnum;
+}
 
 static inline int xm_handle_alarm(xmdevice *device, char *pBuf, unsigned long dwBufLen)
 {
 	SDK_AlarmInfo alarmInfo;
 	memcpy (&alarmInfo, pBuf, dwBufLen); 	
+
+	jtprintf("[%s]alarmInfo.iEvent %d, alarmInfo.nChannel %d, alarmInfo.iStatus %d\n"
+		, __FUNCTION__, alarmInfo.iEvent, alarmInfo.nChannel, alarmInfo.iStatus);
 
 	int reason = ALARM_TYPE_UNKNOWN;
 	if ( SDK_EVENT_CODE_NET_ALARM == alarmInfo.iEvent 
@@ -343,6 +393,11 @@ static inline int xm_handle_alarm(xmdevice *device, char *pBuf, unsigned long dw
 		|| SDK_EVENT_CODE_LOCAL_ALARM == alarmInfo.iEvent )
 	{
 		jtprintf("[%s]SDK_EVENT_CODE_NET_ALARM SDK_EVENT_CODE_MANUAL_ALARM SDK_EVENT_CODE_LOCAL_ALARM\n", __FUNCTION__);
+	}
+	else if (SDK_EVENT_CODE_LOCAL_ALARM == alarmInfo.iEvent ) 
+	{
+		reason = ALARM_TYPE_INPUT;
+		jtprintf("[%s]SDK_EVENT_CODE_VIDEO_MOTION\n", __FUNCTION__);
 	}
 	else if ( SDK_EVENT_CODE_VIDEO_MOTION == alarmInfo.iEvent ) 
 	{
@@ -379,7 +434,7 @@ static inline int xm_handle_alarm(xmdevice *device, char *pBuf, unsigned long dw
 	st_stream_data alarm;
 	alarm.streamtype = ALARM_STREAM_DATA;
 	alarm.stream_info.alarm_stream_info.reason = reason;
-	alarm.stream_info.alarm_stream_info.channelid = 0;
+	alarm.stream_info.alarm_stream_info.channelid = xm_channelnum_convert(device, alarmInfo.nChannel);
 
 	if(device->dev.alarmcallback)
 		device->dev.alarmcallback(CALLBACK_TYPE_ALARM_STREAM, &alarm, &device->dev.alarmuserdata);
@@ -500,19 +555,19 @@ static int xm_get_encode_mode(int type)
 	switch(type)
 	{
 		case SDK_CAPTURE_COMP_DIVX_MPEG4:	///< DIVX MPEG4。
-			return VIDEO_ENCODE_UNKNOWNN;
+			return VIDEO_ENCODE_UNKNOWN;
 		break;
 		case SDK_CAPTURE_COMP_MS_MPEG4:		///< MS MPEG4。
-			return VIDEO_ENCODE_UNKNOWNN;
+			return VIDEO_ENCODE_UNKNOWN;
 		break;
 		case SDK_CAPTURE_COMP_MPEG2: 		///< MPEG2。
-			return VIDEO_ENCODE_UNKNOWNN;
+			return VIDEO_ENCODE_UNKNOWN;
 		break;
 		case SDK_CAPTURE_COMP_MPEG1: 		///< MPEG1。
-			return VIDEO_ENCODE_UNKNOWNN;
+			return VIDEO_ENCODE_UNKNOWN;
 		break;
 		case SDK_CAPTURE_COMP_H263:			///< H.263
-			return VIDEO_ENCODE_UNKNOWNN;
+			return VIDEO_ENCODE_UNKNOWN;
 		break;
 		case SDK_CAPTURE_COMP_MJPG:			///< MJPG
 			return VIDEO_ENCODE_JPEG;
@@ -718,10 +773,19 @@ static int xm_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 				struct stCloseVideoStream_Req req;
 				struct stCloseVideoStream_Rsp rsp;
 				req.StreamHandle = (long)xmstream;
-				xm_close_video_stream(dev, &req, &rsp);
+				xm_close_video_stream(dev, &req, &rsp);//关闭流
 			}
 		}
+
+		if(xmchannel->chn.audiocallback)
+		{
+			struct stCloseAudioStream_Req req;
+			struct stCloseAudioStream_Rsp rsp;
 		
+			req.Channel = xmchannel->chn.id;
+			xm_close_audio_stream(dev, &req, &rsp);//关闭音频
+		}
+
 		channel_init(&xmchannel->chn);
 	}
 
@@ -1141,8 +1205,8 @@ static int xm_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 		if(dev->alarmcallback)
 			dev->alarmcallback(CALLBACK_TYPE_ALARM_STREAM_OPENED, (void*)SUCCESS, &dev->alarmuserdata);
 
-		jtprintf("[%s]xmdev H264_DVR_SetupAlarmChan ok  22, alarmcallback %p\n"
-			, __FUNCTION__, dev->alarmcallback);
+		//jtprintf("[%s]xmdev H264_DVR_SetupAlarmChan ok  22, alarmcallback %p\n"
+		//	, __FUNCTION__, dev->alarmcallback);
 
 		dev->alarmcallback = req->Callback;
 		dev->alarmuserdata = req->UserData;
@@ -1241,7 +1305,7 @@ static int xm_ptz_control(struct device * dev, struct stPTZControl_Req *req, str
 	{
 		case JPTZ_STOP://停止
 		
-			jtprintf("[%s]ip %s, port %u, Channel %d, Action %u, Speed %d\n"
+			jtprintf("[%s]JPTZ_STOP ip %s, port %u, Channel %d, Action %u, Speed %d\n"
 			, __FUNCTION__, dev->ip, dev->port, req->Channel, req->Action, req->Speed);
 			
 			H264_DVR_PTZControl(xmdev->loginid, req->Channel, 0, 1, 0);
@@ -1254,10 +1318,12 @@ static int xm_ptz_control(struct device * dev, struct stPTZControl_Req *req, str
 		case JPTZ_LEFT_DOWN:
 		case JPTZ_LEFT:
 		case JPTZ_LEFT_UP:
+			jtprintf("[%s]FANGXIANG JPTZ_STOP ip %s, port %u, Channel %d, Action %u, Speed %d\n"
+			, __FUNCTION__, dev->ip, dev->port, req->Channel, req->Action, req->Speed);
 			if(!H264_DVR_PTZControl(xmdev->loginid, req->Channel, xm_ptz_direction_convert(req->Action), 0, req->Speed))
 			{
 
-			}			
+			}	
 		break;
 		case JPTZ_PUSH_FAR://拉远
 			H264_DVR_PTZControl(xmdev->loginid, req->Channel, ZOOM_OUT, 0, req->Speed);
@@ -1287,7 +1353,20 @@ static int xm_ptz_control(struct device * dev, struct stPTZControl_Req *req, str
 			H264_DVR_PTZControlEx(xmdev->loginid, req->Channel, EXTPTZ_POINT_MOVE_CONTROL, req->PresetNum, 2, 3, 0);
 		break;
 		case JADD_TO_LOOP://添加预置点到巡航
-			H264_DVR_PTZControlEx(xmdev->loginid, req->Channel, EXTPTZ_ADDTOLOOP, req->TourNum, req->PresetNum, 3, 0);
+			jtprintf("[%s]dev %s, %u, JADD_TO_LOOP\n", __FUNCTION__, dev->ip, dev->port);
+		
+			if(!H264_DVR_PTZControlEx(xmdev->loginid, req->Channel, EXTPTZ_CLOSELOOP, req->TourNum, 2, 3, 0))
+			{
+				jtprintf("[%s]dev %s, %u, JADD_TO_LOOP, failed 1\n", __FUNCTION__, dev->ip, dev->port);
+			}
+
+			for(int i=0 ; i<req->SequenceNum ; ++i)
+			{
+				H264_DVR_PTZControlEx(xmdev->loginid, req->Channel
+					, EXTPTZ_ADDTOLOOP, req->TourNum, req->SequenceGroup[i], 3, 0);
+
+			}
+
 		break;
 		case JDEL_FROM_LOOP://将预置点从巡航删除
 			H264_DVR_PTZControlEx(xmdev->loginid, req->Channel, EXTPTZ_DELFROMLOOP, req->TourNum, req->PresetNum, 3, 0);

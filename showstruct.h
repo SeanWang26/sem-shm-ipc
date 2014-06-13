@@ -2,14 +2,7 @@
 #define SHOWSTURCT_H
 
 int showstruct();
-
-
-
-
-
-
-
-
+int showstruct2();
 
 
 

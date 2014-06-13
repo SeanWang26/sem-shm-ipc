@@ -14,7 +14,7 @@ frontplug.exe:../main.c ../commnvr.h ../commnvr.cpp ../TimeOutCheck.cpp ../posix
 	cp frontplug.exe zhsonysnc_SDK.exe
 
 plugtest.exe:../plugtest.cpp ../jtsimplestackback.c
-	$(CCC)  -g -Wall -Wl,-rpath,./ -o plugtest.exe ../plugtest.cpp ../jtsimplestackback.c -L./ -ljfront -ljthk -lhcnetsdk -ljtdh -lrt -lpthread
+	$(CCC)  -g -Wall -Wl,-rpath,./ -o plugtest.exe ../plugtest.cpp ../jtsimplestackback.c ../showstruct.cpp -L./ -ljfront -ljthk -lhcnetsdk -ljtdh -lrt -lpthread
 
 .PHONY : all
 

@@ -71,6 +71,12 @@ unsigned int check_singlebuf(struct stsinglebufinfo *bufinfo, unsigned int needl
 	}
 
 	int unusedlen = bufinfo->len - bufinfo->bufusedlen;
+	if(unusedlen<0)
+	{
+		jtprintf("[%s]unusedlen %d, bufinfo->len %d, bufinfo->bufusedlen\n"
+			, __FUNCTION__, unusedlen, bufinfo->len, bufinfo->bufusedlen);
+	}
+		
 	assert(unusedlen>=0);
 	return unusedlen;
 	

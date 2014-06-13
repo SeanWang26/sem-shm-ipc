@@ -613,7 +613,9 @@ static int hk_alarm_type_convert(unsigned int type)
 {
 	jtprintf("[%s]hk type %u\n", __FUNCTION__, type);
 	switch(type)
-	{
+	{	
+		case 0:
+			return ALARM_TYPE_INPUT;
 		case 2:
 			return ALARM_TYPE_VIDEO_LOSS;
 		case 3:
@@ -1270,18 +1272,29 @@ static int hk_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 
 			if(hkstream->playhandle != HK_INVALIDE_HANDLE)
 			{
-				NET_DVR_StopRealPlay(hkstream->playhandle);
-				hkstream->playhandle = HK_INVALIDE_HANDLE;
+				struct stCloseVideoStream_Req req;
+				struct stCloseVideoStream_Rsp rsp;
+				req.StreamHandle = (long)hkstream;
+				hk_close_video_stream(dev, &req, &rsp);		
 			}
 		}
 
 		//改为hk_close_video_stream??????
-		if(hkchannel->voicehandle != HK_INVALIDE_HANDLE)
+		//if(hkchannel->voicehandle != HK_INVALIDE_HANDLE)
+		//{
+		//	NET_DVR_StopVoiceCom(hkchannel->voicehandle);
+		//	hkchannel->voicehandle = HK_INVALIDE_HANDLE;
+		//}
+
+		if(hkchannel->chn.audiocallback)
 		{
-			NET_DVR_StopVoiceCom(hkchannel->voicehandle);
-			hkchannel->voicehandle = HK_INVALIDE_HANDLE;
-		}
+			struct stCloseAudioStream_Req req;
+			struct stCloseAudioStream_Rsp rsp;
 		
+			req.Channel = hkchannel->chn.id;
+			hk_close_audio_stream(dev, &req, &rsp);//关闭音频
+		}
+
 		channel_init(&hkchannel->chn);
 	}
 
@@ -1295,14 +1308,14 @@ static int hk_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 	{
 		jtprintf("[%s]hkdev hk_logout success\n", __FUNCTION__);
 		
-		hk_device_init(hkdev);
+		device_init(&hkdev->dev);
 		return SUCCESS;		
 	}
 	else
 	{
 		jtprintf("[%s]hkdev login failed\n", __FUNCTION__);
 		
-		hk_device_init(hkdev);
+		device_init(&hkdev->dev);
 		return LOGOUT_FAILED;
 	}
 
@@ -1692,6 +1705,13 @@ static int hk_set_config(struct device *, struct stSetConfig_Req *req, struct st
 
 	return SUCCESS;
 }
+BOOL CALLBACK hk_alarm_callback_V0(LONG lCommand, char* sDVRIP, char *pBuf, DWORD dwBufLen, DWORD dwUser)
+{
+
+
+	return 0;
+}
+
 static int hk_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req *req, struct stOpenAlarmStream_Rsp *rsp)
 {
 	jtprintf("[%s]\n", __FUNCTION__);
@@ -1705,11 +1725,55 @@ static int hk_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 		jtprintf("[%s]hkdev null\n", __FUNCTION__);
 		return DEVICE_NULL_FAILED;
 	}
+
+	//海康的要先设置报警回调函数?????
+	////if(!NET_DVR_SetDVRMessageCallBack(hk_alarm_callback_V0, (DWORD)0))
+	if(!NET_DVR_SetDVRMessageCallBack_V30(hk_alarm_callback, hkdev))
+	{
+		jtprintf("[%s]NET_DVR_SetDVRMessageCallBack_V30 error %d\n", __FUNCTION__, NET_DVR_GetLastError());
+	
+		return OPEN_ALARM_STREAM_FAILED;
+	}
 	
 	hkdev->alarmhandle = NET_DVR_SetupAlarmChan_V30(hkdev->loginid);
 	if(HK_INVALIDE_HANDLE==hkdev->alarmhandle)
 	{
-		jtprintf("[%s]hkdev NET_DVR_SetupAlarmChan_V30 failed\n", __FUNCTION__);
+		DWORD err = NET_DVR_GetLastError();
+		if(err==NET_DVR_NOSUPPORT)
+		{
+			jtprintf("[%s]NET_DVR_NOSUPPORT\n", __FUNCTION__);
+		}
+		
+		jtprintf("[%s]hkdev NET_DVR_SetupAlarmChan_V30 failed, error %d, try NET_DVR_SetupAlarmChan\n", __FUNCTION__, NET_DVR_GetLastError());
+		//如果失败，试着调用低版本的接口
+		/*hkdev->alarmhandle = NET_DVR_SetupAlarmChan(hkdev->loginid);
+		if(HK_INVALIDE_HANDLE==hkdev->alarmhandle)
+		{
+			jtprintf("[%s]hkdev NET_DVR_SetupAlarmChan failed, error %d\n", __FUNCTION__, NET_DVR_GetLastError());
+			NET_DVR_SetDVRMessageCallBack_V30(NULL, 0);
+			return OPEN_ALARM_STREAM_FAILED;
+		}
+		else
+		{
+			jtprintf("[%s]hkdev NET_DVR_SetupAlarmChan ok, alarmcallback %p\n"
+				, __FUNCTION__, dev->alarmcallback);
+			
+			if(dev->alarmcallback)
+				dev->alarmcallback(CALLBACK_TYPE_ALARM_STREAM_OPENED, (void*)SUCCESS, &dev->alarmuserdata);
+
+			//设置报警回调函数
+			//海康的要先设置报警回调函数?????
+			//if(!NET_DVR_SetDVRMessageCallBack_V30(hk_alarm_callback, hkdev))
+			//{
+			//	jtprintf("[%s]NET_DVR_SetDVRMessageCallBack_V30 error %d\n", __FUNCTION__, NET_DVR_GetLastError());
+			//	return OPEN_ALARM_STREAM_FAILED;
+			//}
+
+			dev->alarmcallback = req->Callback;
+			dev->alarmuserdata = req->UserData;
+			rsp->DeviceHandle = (long long)(unsigned long)hkdev;
+		}*/
+
 		return OPEN_ALARM_STREAM_FAILED;
 	}
 	else
@@ -1719,8 +1783,13 @@ static int hk_open_alarm_stream(struct device *dev, struct stOpenAlarmStream_Req
 		if(dev->alarmcallback)
 			dev->alarmcallback(CALLBACK_TYPE_ALARM_STREAM_OPENED, (void*)SUCCESS, &dev->alarmuserdata);
 
-		//设置报警回调函数
-		NET_DVR_SetDVRMessageCallBack_V30(hk_alarm_callback, hkdev);
+		//海康的要先设置报警回调函数?????
+		/*if(!NET_DVR_SetDVRMessageCallBack_V30(hk_alarm_callback, hkdev))
+		{
+			jtprintf("[%s]NET_DVR_SetDVRMessageCallBack_V30 error %d\n", __FUNCTION__, NET_DVR_GetLastError());
+		
+			return OPEN_ALARM_STREAM_FAILED;
+		}*/
 
 		dev->alarmcallback = req->Callback;
 		dev->alarmuserdata = req->UserData;

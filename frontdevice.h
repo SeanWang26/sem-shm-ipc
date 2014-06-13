@@ -131,11 +131,12 @@ struct stream
 {
 	struct object        obj;
 	int                  id;
-	int                  pulling;
 	struct list          entry;
 
 	char                 get_first_i;
 	unsigned long long   llbegintime;//开始时间, 100ns
+
+	int                  pulling;
 	jt_stream_callback   callback;//视频的回调
 	void*                userdata;//视频的用户数据
 

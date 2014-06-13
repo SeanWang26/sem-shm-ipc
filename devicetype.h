@@ -166,18 +166,18 @@ typedef void* (JT_CALL_TYPE *jt_talk_callback)(int callback_type, void* data, vo
 
 
 //回调事件类型
-#define CALLBACK_TYPE_VIDEO_STREAM               1     //视频数据
-#define CALLBACK_TYPE_AUDIO_STREAM               2     //音频流数据
-#define CALLBACK_TYPE_ALARM_STREAM               3     //报警流数据
+#define CALLBACK_TYPE_VIDEO_STREAM               1     //视频数据         流会产生该事件
+#define CALLBACK_TYPE_AUDIO_STREAM               2     //音频流数据       通道会产生该事件
+#define CALLBACK_TYPE_ALARM_STREAM               3     //报警流数据       设备会产生该事件
 
-#define CALLBACK_TYPE_VIDEO_STREAM_OPENED        10     //视频流流打开了
-#define CALLBACK_TYPE_VIDEO_STREAM_CLOSEED       11     //视频流关闭了
+#define CALLBACK_TYPE_VIDEO_STREAM_OPENED        10     //视频流流打开了   流会产生该事件
+#define CALLBACK_TYPE_VIDEO_STREAM_CLOSEED       11     //视频流关闭了     流会产生该事件
 
-#define CALLBACK_TYPE_AUDIO_STREAM_OPENED        12     //音频流打开了
-#define CALLBACK_TYPE_AUDIO_STREAM_CLOSEED       13     //音频流关闭了
+#define CALLBACK_TYPE_AUDIO_STREAM_OPENED        12     //音频流打开了    通道会产生该事件
+#define CALLBACK_TYPE_AUDIO_STREAM_CLOSEED       13     //音频流关闭了    通道会产生该事件
 
-#define CALLBACK_TYPE_ALARM_STREAM_OPENED        14     //报警流打开了
-#define CALLBACK_TYPE_ALARM_STREAM_CLOSEED       15     //报警流关闭了
+#define CALLBACK_TYPE_ALARM_STREAM_OPENED        14     //报警流打开了    设备会产生该事件
+#define CALLBACK_TYPE_ALARM_STREAM_CLOSEED       15     //报警流关闭了    设备会产生该事件
 
 #define CALLBACK_TYPE_VIDEO_INfO_CHANGED         16     //视频流参数发生变化
 #define CALLBACK_TYPE_AUDIO_INfO_CHANGED         17     //音频流参数发生变化
@@ -186,6 +186,9 @@ typedef void* (JT_CALL_TYPE *jt_talk_callback)(int callback_type, void* data, vo
 #define CALLBACK_TYPE_TALK_CLOSED                21     //对讲结束了
 #define CALLBACK_TYPE_TALK_THREAD_TERMAL         22     //对讲线程终结了
 
-#define CALLBACK_TYPE_DEVICE_INIT                98     //设备被删除了
-#define CALLBACK_TYPE_DEVICE_DELETED             99     //设备被删除了
+#define CALLBACK_TYPE_DEVICE_INIT                98     //设备被初始化了    设备，通道，流会产生该事件
+#define CALLBACK_TYPE_DEVICE_DELETED             99     //设备被删除了       设备，通道，流会产生该事件
+#define CALLBACK_TYPE_DEVICE_DISCONNECT          100    //设备断线
+
+
 #endif

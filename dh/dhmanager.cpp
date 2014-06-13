@@ -124,7 +124,7 @@ struct DhInnerTailStruct
 };
 #pragma pack(pop)
 
-static inline int dh_vidoestreamfilter(unsigned char** data, DWORD *datalen, int key)
+/*static inline int dh_vidoestreamfilter(unsigned char** data, DWORD *datalen, int key)
 {
 	//'\x44' '\x48' '\x41' '\x56'  D H A V
 	//'\x64' '\x68' '\x61' '\x76'  d h a v
@@ -158,7 +158,7 @@ static inline int dh_vidoestreamfilter(unsigned char** data, DWORD *datalen, int
 		}
 
 	return 0;
-}
+}*/
 
 /**/
 #if 0
@@ -638,7 +638,7 @@ static int dh_device_init(struct dhdevice *dev)
 			struct dhstream* dhstream = (struct dhstream*)stream;
 			assert(dhstream->stm.obj.type == OBJECT_TYPE_STREAM);
 			dhstream->currentencode = VIDEO_ENCODE_UNKNOWN;
-			dhstream->playhandle = DH_INVALIDE_PLAYHANDLE;
+			dhstream->playhandle = DH_INVALIDE_HANDLE;
 
 			stream_init(&dhstream->stm);
 		}
@@ -647,7 +647,7 @@ static int dh_device_init(struct dhdevice *dev)
 	}
 
 	dev->voicehandle = 0;
-	dev->loginid = DH_INVALIDE_LOGINID;
+	dev->loginid = DH_INVALIDE_HANDLE;
 	dev->ProtoVer = 0;
 	memset(&dev->info, 0, sizeof(dev->info));
 
@@ -764,13 +764,13 @@ void CALLBACK Static_RealDataCallBackEx(LLONG lRealHandle, DWORD dwDataType, BYT
 		{
 			assert(dwBufSize>40);
 			struct DhInnerHeadStruct *head = (struct DhInnerHeadStruct *)pBuffer;
-			head->PackLen
+			//head->PackLen
 
 			if((head->PackgeType&0xff)==0xfc)//p֡
 			{
 				
 			}
-			else if(head->PackgeType&0xff)==0xfd)//i֡
+			else if((head->PackgeType&0xff)==0xfd)//i֡
 			{
 
 			}
@@ -794,7 +794,7 @@ void CALLBACK Static_RealDataCallBackEx(LLONG lRealHandle, DWORD dwDataType, BYT
 
 	}
 
-	return 0;
+
 	/*jtprintf("[fream head, before]type %d, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, %02x, (%d)\n"
 											, dwDataType, pBuffer[0], pBuffer[1]
 											, pBuffer[2], pBuffer[3]
@@ -870,7 +870,7 @@ static int dh_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	if(stm == NULL)
 	{
 		//add stream
-		stm = (struct hkstream*)alloc_stream_with_videobuf(sizeof(struct hkstream), req->Codec, 1024*1024);
+		stm = (struct dhstream*)alloc_stream_with_videobuf(sizeof(struct dhstream), req->Codec, 1024*1024);
 		if(stm)
 		{
 			if((struct stream*)stm != add_stream((channel*)chn, (struct stream*)stm))

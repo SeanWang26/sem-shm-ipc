@@ -5,6 +5,7 @@
 #include <time.h>
 #include <memory>
 #include <sstream>
+#include <unistd.h>
 
 #include "snmanager.h"
 #include "../devicetype.h"
@@ -1158,7 +1159,6 @@ static int sn_device_init(struct sndevice *dev)
 			assert(snstream->stm.obj.type == OBJECT_TYPE_STREAM);
 
 			snstream->currentencode = VIDEO_ENCODE_UNKNOWN;
-			//////snstream->playhandle = HK_INVALIDE_HANDLE;
 
 			stream_init(&snstream->stm);
 		}
@@ -1186,6 +1186,39 @@ static void sn_show_dev_ability(struct device *dev)
 		, sndev->info.byChanNum,  sndev->info.byIPChanNum
 		, sndev->info.byStartChan, sndev->info.byStartDChan, sndev->info.byMainProto, sndev->info.bySubProto, sndev->info.byAudioChanNum);
 */
+}
+
+
+static int sn_ipc_cgi_inquiry_closesocket(void *clientp, curl_socket_t sock)
+{
+	jtprintf("[%s]clientp %p\n", __FUNCTION__, clientp);
+	if(clientp)
+	{
+		struct object *obj = (struct object *)clientp;
+		if(obj->type == OBJECT_TYPE_STREAM)
+		{
+			struct snstream *stm = (struct snstream *)clientp;
+			if(stm->stm.pulling)
+			{
+				jtprintf("[%s]stream close abnomal %p, pulling %d\n", __FUNCTION__, clientp, stm->stm.pulling);
+
+				struct device *dev = (struct device *)stm->stm.obj.parent->parent;
+
+				if(dev->alarmcallback)
+					dev->alarmcallback(CALLBACK_TYPE_DEVICE_DISCONNECT, NULL, &dev->alarmuserdata);
+
+				sn_device_init((struct sndevice *)dev);
+			}
+			else 
+			{
+				jtprintf("[%s]stream try close %p, pulling %d\n", __FUNCTION__, clientp, stm->stm.pulling);
+			}
+		}
+
+		
+	}
+	
+	return close(sock);
 }
 
 static int sn_ipc_cgi_inquiry(void* callback, void* userdata, char* url, char* user, char* password, int head)
@@ -1262,6 +1295,25 @@ static int sn_ipc_cgi_inquiry(void* callback, void* userdata, char* url, char* u
 		goto curl_error;
 	}
 
+	code = curl_easy_setopt(conn, CURLOPT_CLOSESOCKETFUNCTION, sn_ipc_cgi_inquiry_closesocket);
+	if (code != CURLE_OK) {
+		jtprintf("[%s]Failed to set CURLOPT_CLOSESOCKETFUNCTION 0\n", __FUNCTION__);
+		goto curl_error;
+	}
+
+	code = curl_easy_setopt(conn, CURLOPT_CLOSESOCKETDATA, userdata);
+	if (code != CURLE_OK) {
+		jtprintf("[%s]Failed to set CURLOPT_CLOSESOCKETDATA 0\n", __FUNCTION__);
+		goto curl_error;
+	}
+
+
+	code = curl_easy_setopt(conn, CURLOPT_FORBID_REUSE, 1);
+	if (code != CURLE_OK) {
+		jtprintf("[%s]Failed to set CURLOPT_FORBID_REUSE 0\n", __FUNCTION__);
+		goto curl_error;
+	}
+
 	code = curl_easy_perform(conn);
 	if (code != CURLE_OK)
 	{
@@ -1273,7 +1325,7 @@ static int sn_ipc_cgi_inquiry(void* callback, void* userdata, char* url, char* u
 		jtprintf("[%s]curl_easy_perform ok\n", __FUNCTION__);
 		return 0;
 	}
-
+	
 curl_error:
 	curl_easy_cleanup(conn);
 	return -1;
@@ -1343,7 +1395,7 @@ static int sn_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 	jtprintf("[%s]\n", __FUNCTION__);
 	assert(dev!=NULL);
 	return NOT_IMPLEMENT;	
-	/*sndevice *sndev = (sndevice *)dev;
+	sndevice *sndev = (sndevice *)dev;
 	if(sndev==NULL)
 	{
 		jtprintf("[%s]sndev null\n", __FUNCTION__);
@@ -1352,6 +1404,7 @@ static int sn_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 
 	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, dev->ip, dev->port);
 
+	//复位流和通道
 	struct channel* channel;
 	LIST_FOR_EACH_ENTRY(channel, &sndev->dev.channels, struct channel, entry)
 	{
@@ -1363,30 +1416,31 @@ static int sn_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 			struct snstream* snstream = (struct snstream*)stream;
 			assert(snstream->stm.obj.type == OBJECT_TYPE_STREAM);
 
-			if(snstream->playhandle != HK_INVALIDE_HANDLE)
-			{
-				NET_DVR_StopRealPlay(snstream->playhandle);
-				snstream->playhandle = HK_INVALIDE_HANDLE;
-			}
+			struct stCloseVideoStream_Req req;
+			struct stCloseVideoStream_Rsp rsp;
+			req.StreamHandle = (long)snstream;
+			sn_close_video_stream(dev, &req, &rsp);//关闭流
+
+			stream_init(stream);
 		}
 
-		//改为sn_close_video_stream??????
-		if(snchannel->voicehandle != HK_INVALIDE_HANDLE)
+		if(snchannel->chn.audiocallback)
 		{
-			NET_DVR_StopVoiceCom(snchannel->voicehandle);
-			snchannel->voicehandle = HK_INVALIDE_HANDLE;
+			struct stCloseAudioStream_Req req;
+			struct stCloseAudioStream_Rsp rsp;
+		
+			req.Channel = snchannel->chn.id;
+			sn_close_audio_stream(dev, &req, &rsp);//关闭音频
 		}
 		
 		channel_init(&snchannel->chn);
 	}
 
-	if(sndev->alarmhandle)
-	{
-		NET_DVR_CloseAlarmChan_V30(sndev->alarmhandle);
-		sndev->alarmhandle = HK_INVALIDE_HANDLE;
-	}
+	device_init(&sndev->dev);
 
-	if(NET_DVR_Logout(sndev->loginid))
+	return SUCCESS; 
+
+	/*if(NET_DVR_Logout(sndev->loginid))
 	{
 		jtprintf("[%s]sndev sn_logout success\n", __FUNCTION__);
 		
@@ -1400,30 +1454,39 @@ static int sn_logout(struct device *dev, struct stLogout_Req *req, struct stLogo
 		sn_device_init(sndev);
 		return LOGOUT_FAILED;
 	}
-
-	return LOGIN_FAILED;*/
+*/
+	return LOGIN_FAILED;
 }
 
 static int sn_cgi_command_get_stream(char *data, size_t size, size_t nmemb, void *userdata)
 {
 	struct snstream* stm = (struct snstream*)userdata;
-	
+	//jtprintf("[%s]enter pull %d\n", __FUNCTION__, stm->stm.pulling);
+
+	/*jtprintf("[%s]pulling %d, size %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+		, __FUNCTION__, stm->stm.pulling, size, nmemb
+		, data[0], data[1], data[2], data[3] ,data[4]
+		, data[5], data[6], data[7], data[8] ,data[9]
+		, data[10], data[11], data[12], data[13] , data[14]
+		, data[15], data[16], data[17], data[18] , data[19], data[nmemb-1]);
+*/
+	//return nmemb;
 	if(stm->stm.pulling == 1)
 	{	
 		//curl默认返回最大16384个数据
-		if(data[0]==0x00 || data[1]==0x00 || data[2] ==0x00 || data[3] ==0x01)
+		if(data[0]==0x00 && data[1]==0x00 && data[2] ==0x00 && data[3] ==0x01)
 		{
 			unsigned char* vdata = NULL;
 			unsigned int vdatalen = 0;
 			if(read_from_singlebuf(&stm->stm.videobuf, &vdata, &vdatalen))
 			{
-				/*jtprintf("[%s]pulling %d, size %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
+				/*jtprintf("[%s]1pulling %d, size %d, nmemb %u, %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x\n"
 					, __FUNCTION__, stm->stm.pulling, size, vdatalen
 					, vdata[0], vdata[1], vdata[2], vdata[3] ,vdata[4]
 					, vdata[5], vdata[6], vdata[7], vdata[8] ,vdata[9]
 					, vdata[10], vdata[11], vdata[12], vdata[13] , vdata[14]
 					, vdata[15], vdata[16], vdata[17], vdata[18] , vdata[19], vdata[vdatalen-1]);
-*/
+				*/
 				struct channel* chn = (struct channel*)stm->stm.obj.parent;
 				struct device* dev = (struct device*)chn->obj.parent;
 
@@ -1489,8 +1552,11 @@ static int sn_cgi_command_get_stream(char *data, size_t size, size_t nmemb, void
 
 		write_to_singlebuf(&stm->stm.videobuf, (unsigned char*)data, nmemb);
 
+		//jtprintf("[%s]pull %d\n", __FUNCTION__, stm->stm.pulling);
 		return nmemb;
 	}
+
+	//jtprintf("[%s]leave pull %d\n", __FUNCTION__, stm->stm.pulling);
 
 	return 0;
 }
@@ -1501,14 +1567,36 @@ static void* sn_cgi_command_get_stream2(void* userdata)
 	struct device *dev = (struct device *)stm->stm.obj.parent->parent;
 
 	char strurl[512]={0};
-	sprintf(strurl, "http://%s:%d/image", dev->ip, dev->port);
-	jtprintf("[%s]111%s\n", __FUNCTION__, strurl);
+	if(stm->stm.id==0)
+	{
+		sprintf(strurl, "http://%s:%d/image1", dev->ip, dev->port);
+	}
+	else if(stm->stm.id==1)
+	{
+		sprintf(strurl, "http://%s:%d/image2", dev->ip, dev->port);
+	}
+	else if(stm->stm.id==2)
+	{
+		sprintf(strurl, "http://%s:%d/image3", dev->ip, dev->port);
+	}
+	
+	jtprintf("[%s]%s\n", __FUNCTION__, strurl);
 	stm->stm.pulling = 1;
 	if(!sn_ipc_cgi_inquiry((void*)sn_cgi_command_get_stream, stm, strurl, dev->user, dev->password, 0))
 	{
-		
+		jtprintf("[%s]sn_ipc_cgi_inquiry ok\n", __FUNCTION__);
 	}
-	jtprintf("[%s]2222%s\n", __FUNCTION__, strurl);
+
+	if(stm->stm.pulling==1)
+	{
+		jtprintf("[%s]stream may stop abnomal, pulling %d\n", __FUNCTION__, stm->stm.pulling);
+	}
+	else 
+	{
+		jtprintf("[%s]stream may stop, pulling %d\n", __FUNCTION__, stm->stm.pulling);
+	}
+
+	//jtprintf("[%s]2222%s\n", __FUNCTION__, strurl);
 
 	return NULL;
 }
@@ -1582,14 +1670,31 @@ static int sn_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	clear_singlebuf(&stm->stm.videobuf);
 
 	//方便用户修改上一次的 userdata数据
-	if(stm->stm.callback)
+	/*if(stm->stm.callback)
 		stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM_OPENED, NULL, &stm->stm.userdata);
 
-	pthread_t tid;
-	if(create_detached_thread(&tid, sn_cgi_command_get_stream2, stm))
 	{
-		stm->stm.pulling = 0;
-		return OPEN_VIDEO_STREAM_FAILED;
+		char strurl[256] = {0};
+		sprintf(strurl, "http://%s:%d/command/inquiry.cgi?inqjs=video1", dev->ip, dev->port);
+		jtprintf("[%s]strurl %s\n", __FUNCTION__, strurl);
+	
+		if(sn_ipc_cgi_inquiry((void*)sn_cgi_command_inquiry_system, sndev, strurl, dev->user, dev->password, 1))
+		{
+			jtprintf("[%s]sn_ipc_cgi_inquiry failed\n", __FUNCTION__);
+			return OPEN_VIDEO_STREAM_FAILED;
+		}
+	}*/
+
+	{
+		char strurl[256] = {0};
+		sprintf(strurl, "http://%s:%d/command/inquiry.cgi?inq=system", dev->ip, dev->port);
+		jtprintf("[%s]strurl %s\n", __FUNCTION__, strurl);
+
+		if(sn_ipc_cgi_inquiry((void*)sn_cgi_command_inquiry_system, sndev, strurl, dev->user, dev->password, 0))
+		{
+			jtprintf("[%s]sn_ipc_cgi_inquiry failed\n", __FUNCTION__);
+			return OPEN_VIDEO_STREAM_FAILED;
+		}
 	}
 
 	stm->stm.pulling = 1;
@@ -1599,6 +1704,24 @@ static int sn_open_video_stream(struct device *dev, struct stOpenVideoStream_Req
 	stm->stm.userdata = req->UserData;
 	
 	rsp->StreamHandle = (long)stm;
+
+	pthread_t tid;
+	if(create_detached_thread(&tid, sn_cgi_command_get_stream2, stm))
+	{
+		stm->stm.pulling = 0;
+		return OPEN_VIDEO_STREAM_FAILED;
+	}
+
+	//放到之前去了，如连接不上会掉一次
+	/*
+	stm->stm.pulling = 1;
+	stm->stm.llbegintime = 0;///改为时间?????
+	stm->currentencode = VIDEO_ENCODE_VIDEO_H264;//先默认了//从dev里得到他来填一个
+	stm->stm.callback = (jt_stream_callback)req->Callback;
+	stm->stm.userdata = req->UserData;
+	
+	rsp->StreamHandle = (long)stm;
+	*/
 	
 	/*
 
@@ -1684,6 +1807,8 @@ static int sn_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 
 	stm->stm.pulling = 0;
 
+	sleep(1);
+	
 	if(stm->stm.callback)
 		stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM_CLOSEED, SUCCESS, &stm->stm.userdata);
 
