@@ -215,6 +215,7 @@ struct stReboot_Req
 struct stReboot_Rsp
 {
 	long long				DeviceHandle;
+	int                     Reslute;
 };
 //设定时间
 struct stSetTime_Req
@@ -237,6 +238,40 @@ struct stSetTime_Rsp
 	int						minute;
 	int						second;
 };
+
+//设置图像参数
+struct stSetVideoEffect_Req
+{
+	long long				DeviceHandle;
+	int						Channel;
+	int                     BrightValue;
+	int	                    ContrastValue;
+	int	                    SaturationValue;
+	int      	            HueValue;
+};
+struct stSetVideoEffect_Rsp
+{
+	long long				DeviceHandle;
+	int                     Reslut;
+};
+
+//获取图像参数
+struct stGetVideoEffect_Req
+{
+	long long				DeviceHandle;
+	int						Channel;
+};
+
+struct stGetVideoEffect_Rsp
+{
+	long long				DeviceHandle;
+	int						Channel;
+	int                     BrightValue;                        // 亮度
+	int	                    ContrastValue;                      //对比度
+	int	                    SaturationValue;                    //饱和度
+	int      	            HueValue;                           //色度
+};
+
 
 enum { PTZ_MOVE=0, PTZ_STOP, PTZ_TOUR_START, PTZ_TOUR_STOP, SET_DEFAULT_POS, GOTO_PRESET, SET_PRESET, CLEAR_PRESET, SET_TOUR_LIST, AUTO_FOUS};
 

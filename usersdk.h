@@ -53,6 +53,8 @@ typedef int JT_CALL_TYPE (*jt_set_system_time_dl)(void* handle, struct stSetTime
 typedef int JT_CALL_TYPE (*jt_start_talk_dl)(void* handle, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 typedef int JT_CALL_TYPE (*jt_stop_talk_dl)(void* handle, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
 typedef int JT_CALL_TYPE (*jt_send_talk_data_dl)(void* handle, stSendTalkData_Req *req, stSendTalkData_Rsp *rsp);
+typedef int JT_CALL_TYPE (*jt_get_video_effect_dl)(void* handle, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp);
+typedef int JT_CALL_TYPE (*jt_set_video_effect_dl)(void* handle, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp);
 
 
 
@@ -82,6 +84,9 @@ JT_FRONT_API int JT_CALL_TYPE jt_set_system_time(void* handle, struct stSetTime_
 JT_FRONT_API int JT_CALL_TYPE jt_start_talk(void* handle, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 JT_FRONT_API int JT_CALL_TYPE jt_stop_talk(void* handle, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
 JT_FRONT_API int JT_CALL_TYPE jt_send_talk_data(void* handle, stSendTalkData_Req *req, stSendTalkData_Rsp *rsp);
+JT_FRONT_API int JT_CALL_TYPE jt_get_video_effect(void* handle, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp);
+JT_FRONT_API int JT_CALL_TYPE jt_set_video_effect(void* handle, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp);
+
 
 #ifdef __cplusplus
 }

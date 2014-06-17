@@ -41,6 +41,9 @@ static int sn_set_system_time(struct device *, struct stSetTime_Req *req, struct
 static int sn_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 static int sn_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
 static int sn_send_talk_data(struct device *, struct stSendTalkData_Req *req, struct stSendTalkData_Rsp *rsp);
+static int sn_get_video_effect(struct device *, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp);
+static int sn_set_video_effect(struct device *, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp);
+
 
 static struct device_ops sn_ops = 
 {
@@ -62,7 +65,9 @@ static struct device_ops sn_ops =
 	sn_set_system_time,
 	sn_start_talk,
 	sn_stop_talk,
-	sn_send_talk_data
+	sn_send_talk_data,
+	sn_get_video_effect,
+	sn_set_video_effect
 };
 
 void sn_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
@@ -2550,6 +2555,15 @@ static int sn_send_talk_data(struct device *dev, struct stSendTalkData_Req *req,
 	}
 	
 	return SUCCESS;*/
+}
+static int sn_get_video_effect(struct device *, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp)
+{
+
+	return NOT_IMPLEMENT;
+}
+static int sn_set_video_effect(struct device *, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp)
+{
+	return NOT_IMPLEMENT;
 }
 
 

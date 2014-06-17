@@ -36,11 +36,13 @@ struct hkchannel
 	long			voicehandle;//				对讲句柄
 };
 
+
 struct hkstream
 {
 	struct stream stm;
 	long playhandle;
 	int  currentencode;//当前是何种编码，xm的回调里没有说明，这里保存一个
+	int  stmtype;      //0:未知   1:ps流
 };
 
 extern "C" int hk_lib_init();

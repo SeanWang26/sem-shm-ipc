@@ -30,6 +30,8 @@ static int xm_set_system_time(struct device *, struct stSetTime_Req *req, struct
 static int xm_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 static int xm_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
 static int xm_send_talk_data(struct device *, struct stSendTalkData_Req *req, struct stSendTalkData_Rsp *rsp);
+static int xm_get_video_effect(struct device *, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp);
+static int xm_set_video_effect(struct device *, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp);
 
 static struct device_ops xm_ops = 
 {
@@ -51,7 +53,9 @@ static struct device_ops xm_ops =
 	xm_set_system_time,
 	xm_start_talk,
 	xm_stop_talk,
-	xm_send_talk_data
+	xm_send_talk_data,
+	xm_get_video_effect,
+	xm_set_video_effect
 };
 
 void CALL_METHOD xm_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
@@ -109,7 +113,7 @@ static int xm_pack_type_convert(enum MEDIA_PACK_TYPE type)
 }
 static int dosaveraw(unsigned char* data, int len)
 {
-	static FILE* fp=fopen("/home/raw.bin", "wb+");;
+	static FILE* fp=fopen("raw.bin", "wb+");;
 	if(fp==NULL)
 		return -1;
 
@@ -1533,3 +1537,100 @@ static int xm_send_talk_data(struct device *dev, struct stSendTalkData_Req *req,
 	return SUCCESS;	
 }
 
+static int stream_in_pull(struct stream *stm, void* data)
+{
+	if(((struct xmstream*)stm)->playhandle!=XM_INVALIDE_PLAYHANDLE)
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
+static int xm_get_video_effect(struct device *dev, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp)
+{
+	jtprintf("[%s]\n", __FUNCTION__);
+	assert(dev!=NULL);
+
+	return NOT_SURPORT;
+	/*xmdevice *xmdev = (xmdevice *)get_device(dev);
+	if(xmdev==NULL)
+	{
+		jtprintf("[%s]xmdev null\n", __FUNCTION__);
+		return DEVICE_NO_FOUND;
+	}
+
+	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, xmdev->dev.ip, xmdev->dev.port);
+
+	struct xmchannel* chn = NULL;
+	chn = (struct xmchannel*)get_channel(&dev->channels, req->Channel);
+	if(chn == NULL)
+	{
+		return INVALID_CHANNEL_NO_FAILED;
+	}
+	
+	struct xmstream* stm = (struct xmstream*)get_special_stream(&chn->chn.streams, stream_in_pull, NULL);
+	if(stm==NULL)
+	{
+		return INVALID_STREAM_NO_FAILED;
+	}
+
+	LONG Brightness=5;
+	LONG Contrast=5;
+	LONG Saturation=5;
+	LONG Hue=5;
+	if(!H264_DVR_LocalGetColor(stm->playhandle, 0, &Brightness, &Contrast, &Saturation, &Hue))
+	{
+		return GET_VEDIO_EFFECT_FAILED;
+	}
+	
+	H264_DVR_LocalGetColor(long lHandle, DWORD nRegionNum, LONG *pBrightness, LONG *pContrast, LONG *pSaturation, LONG *pHue);
+
+	rsp->BrightValue = Brightness;
+	rsp->ContrastValue = Contrast;
+	rsp->SaturationValue = Saturation;
+	rsp->HueValue = Hue;
+
+	return SUCCESS;*/
+}
+static int xm_set_video_effect(struct device *dev, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp)
+{
+	jtprintf("[%s]\n", __FUNCTION__);
+	assert(dev!=NULL);
+	return NOT_SURPORT;
+
+	/*
+	xmdevice *xmdev = (xmdevice *)get_device(dev);
+	if(xmdev==NULL)
+	{
+		jtprintf("[%s]xmdev null\n", __FUNCTION__);
+		return DEVICE_NO_FOUND;
+	}
+
+	jtprintf("[%s]ip %s, port %u\n", __FUNCTION__, xmdev->dev.ip, xmdev->dev.port);
+
+	struct xmchannel* chn = NULL;
+	chn = (struct xmchannel*)get_channel(&dev->channels, req->Channel);
+	if(chn == NULL)
+	{
+		return INVALID_CHANNEL_NO_FAILED;
+	}
+	
+	struct xmstream* stm = (struct xmstream*)get_special_stream(&chn->chn.streams, stream_in_pull, NULL);
+	if(stm==NULL)
+	{
+		return INVALID_STREAM_NO_FAILED;
+	}
+
+	LONG Brightness=0;
+	LONG Contrast=0;
+	LONG Saturation=0;
+	LONG Hue=0;
+	if(!H264_DVR_LocalGetColor(stm->playhandle, 0, &Brightness, &Contrast, &Saturation, &Hue))
+	{
+		return GET_VEDIO_EFFECT_FAILED;
+	}
+	
+	
+	return SUCCESS;*/
+}

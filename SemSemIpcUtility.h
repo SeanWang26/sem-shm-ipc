@@ -31,7 +31,7 @@ public:
 	~SemShmIpcSet();
 	int Init(SemShmIpcMode Mode, const string& SemInterName, const string& SemCrossName, const string& ShmName, int ShmLen);
 	int GetData(unsigned char** data, int *len);
-	int SetData(unsigned char** data, int *len);
+	int SetData(unsigned char* data, int len);
 	int Wait(int Timeout);
 	int Post();
 };

@@ -97,7 +97,7 @@ int SemShmIpcSet::GetData(unsigned char** data, int *len)
 }
 int SemShmIpcSet::SetData(unsigned char* data, int len)
 {
-
+	return 0;
 }
 
 int SemShmIpcSet::Wait(int Timeout)

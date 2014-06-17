@@ -110,6 +110,9 @@ struct device_ops
 	int  (*stop_talk)(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
 	int  (*send_talk_data)(struct device *, stSendTalkData_Req *req, stSendTalkData_Rsp *rsp);
 
+	int  (*get_video_effect)(struct device *, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp);
+	int  (*set_video_effect)(struct device *, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp);
+
 	//int  (*capture_picture)(struct device *, char *req, unsigned long req);
 	//
 };

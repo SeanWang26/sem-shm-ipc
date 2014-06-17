@@ -31,6 +31,8 @@ static int hk_set_system_time(struct device *, struct stSetTime_Req *req, struct
 static int hk_start_talk(struct device *, struct stStartTalk_Req *req, struct stStartTalk_Rsp *rsp);
 static int hk_stop_talk(struct device *, struct stStopTalk_Req *req, struct stStopTalk_Rsp *rsp);
 static int hk_send_talk_data(struct device *, struct stSendTalkData_Req *req, struct stSendTalkData_Rsp *rsp);
+static int hk_get_video_effect(struct device *, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp);
+static int hk_set_video_effect(struct device *, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp);
 
 static struct device_ops hk_ops = 
 {
@@ -52,7 +54,9 @@ static struct device_ops hk_ops =
 	hk_set_system_time,
 	hk_start_talk,
 	hk_stop_talk,
-	hk_send_talk_data
+	hk_send_talk_data,
+	hk_get_video_effect,
+	hk_set_video_effect
 };
 
 void hk_disconnect_callback(long lLoginID, char *pchDVRIP, long nDVRPort, unsigned long dwUser)
@@ -269,6 +273,16 @@ static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType
 				write_to_singlebuf(&stream->stm.videobuf, vdata, vdatalen);
 			}
 
+			return;
+		}
+		else if((startcode->stream_id[0] & 0xf0) == 0xc0)
+		{
+			int printed = 0;
+			if(!printed)
+			{
+				jtprintf("[%s]AUDIO_PACKET pes %d\n", __FUNCTION__, dwBufSize);
+				printed=1;
+			}
 			return;
 		}
 		else
@@ -2105,4 +2119,13 @@ static int hk_send_talk_data(struct device *dev, struct stSendTalkData_Req *req,
 	return SUCCESS;
 }
 
+static int hk_get_video_effect(struct device *, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp)
+{
+
+	return NOT_IMPLEMENT;
+}
+static int hk_set_video_effect(struct device *, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp)
+{
+	return NOT_IMPLEMENT;
+}
 

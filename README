@@ -54,3 +54,5 @@ currentencode不要了....todo
 
 
 sn使用的是curl，基于http的数据流方式，所以在连接方式上都是短连接，所以连接检测时目前使用的是流的断开连接检测
+
+增加图像参数接口还是使用setconfig -----todo

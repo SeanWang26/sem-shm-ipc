@@ -33,8 +33,12 @@
 
 #define	INVALID_CHANNEL_NO_FAILED		-100 //不正确的通道号
 #define	INVALID_STREAM_NO_FAILED		-101 //不正确的流号
+#define	GET_VEDIO_EFFECT_FAILED		    -102 //不正确的通道号
 
-#define	SET_SYSTEM_TIME_FAILED	        -151 //不正确的流号
+#define	SET_SYSTEM_TIME_FAILED	        -151 //设置系统时间失败
+
+
+
 
 #define	NOT_SURPORT	                    -499 //试图启动设备没有的功能
 #define NOT_IMPLEMENT                   -500 //未实现

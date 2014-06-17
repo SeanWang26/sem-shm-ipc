@@ -361,3 +361,35 @@ int JT_CALL_TYPE jt_send_talk_data(void* handle, stSendTalkData_Req *req, stSend
 	return DEVICE_NO_FOUND;
 	
 }
+int JT_CALL_TYPE jt_get_video_effect(void* handle, stGetVideoEffect_Req *req, stGetVideoEffect_Rsp *rsp)
+{
+	share_lock_devicelist(__FUNCTION__);
+
+	struct device *dev = get_device((struct device *)handle);
+	if(dev)
+	{
+		int res = dev->ops->get_video_effect(dev, req, rsp);
+		unlock_devicelist(__FUNCTION__);
+		return res;
+	}
+
+	unlock_devicelist(__FUNCTION__);
+	return DEVICE_NO_FOUND;
+}
+int JT_CALL_TYPE jt_set_video_effect(void* handle, stSetVideoEffect_Req *req, stSetVideoEffect_Rsp *rsp)
+{
+	share_lock_devicelist(__FUNCTION__);
+
+	struct device *dev = get_device((struct device *)handle);
+	if(dev)
+	{
+		int res = dev->ops->set_video_effect(dev, req, rsp);
+		unlock_devicelist(__FUNCTION__);
+		return res;
+	}
+
+	unlock_devicelist(__FUNCTION__);
+	return DEVICE_NO_FOUND;
+}
+
+
