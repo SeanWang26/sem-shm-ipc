@@ -204,7 +204,7 @@ static int FindClose(HANDLE handle)
 					return FALSE;
 				}
 
-				struct timespec stTS;	
+				struct timespec stTS;
 				memset(&stTS,0,sizeof(struct timespec));
 				clock_gettime(CLOCK_REALTIME, &stTS);
 				stTS.tv_sec += DCALL.SemReq.Value;
@@ -216,10 +216,12 @@ static int FindClose(HANDLE handle)
 					if(res == ETIMEDOUT)
 					{
 						jtprintf("[%s]SEM_WAIT timeout, %s\n", __FUNCTION__, strerror(errno));
+						call.SemReq.Value = -1;
 					}
 					else
 					{
 						jtprintf("[%s]SEM_WAIT error, %s\n", __FUNCTION__, strerror(errno));
+						call.SemReq.Value = -2;
 					}
 					
 					return FALSE;

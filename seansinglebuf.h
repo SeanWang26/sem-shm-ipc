@@ -8,14 +8,14 @@ struct stsinglebufinfo
 	unsigned int         bufusedlen;
 };
 
+//字段置零
+int init_singlebuf(struct stsinglebufinfo *bufinfo);
 
 //返回分配的长度
 unsigned int alloc_memory_to_singlebuf(struct stsinglebufinfo *bufinfo, unsigned int len);
 
+//释放内存
 unsigned int free_singlebuf(struct stsinglebufinfo *bufinfo);
-
-//字段置零
-int init_singlebuf(struct stsinglebufinfo *bufinfo);
 
 //清除数据
 int clear_singlebuf(struct stsinglebufinfo *bufinfo);

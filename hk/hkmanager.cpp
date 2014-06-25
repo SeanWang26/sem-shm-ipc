@@ -283,6 +283,37 @@ static void CALLBACK hk_real_data_callback_v2(LONG lPlayHandle, DWORD dwDataType
 				jtprintf("[%s]AUDIO_PACKET pes %d\n", __FUNCTION__, dwBufSize);
 				printed=1;
 			}
+
+			unsigned char* vdata = NULL;
+			unsigned int vdatalen = 0;	
+			if(move_to_video_payload_data(pBuffer, dwBufSize, &vdata, &vdatalen))
+			{
+				//jtprintf("[%s]AUDIO_PACKET %d\n", __FUNCTION__, stream->stm.id);
+				struct channel* chn = (struct channel*)stream->stm.obj.parent;
+				struct device* dev = (struct device*)chn->obj.parent;
+
+				if(chn->audiocallback)// && chn->audiouserdata)
+				{
+					st_stream_data stmdata;
+					stmdata.streamtype = AUDIO_STREAM_DATA;
+					stmdata.pdata= (char*)vdata;
+					stmdata.datalen = vdatalen;
+					stmdata.stream_info.audio_stream_info.encode = dev->encodeinfo.ch_encode_info[chn->id].audioencode.encodetype;
+					stmdata.stream_info.audio_stream_info.channel = dev->encodeinfo.ch_encode_info[chn->id].audioencode.channel;
+					stmdata.stream_info.audio_stream_info.frequency = dev->encodeinfo.ch_encode_info[chn->id].audioencode.frequency;
+					stmdata.stream_info.audio_stream_info.depth = dev->encodeinfo.ch_encode_info[chn->id].audioencode.depth;
+					stmdata.stream_info.audio_stream_info.bitrate = dev->encodeinfo.ch_encode_info[chn->id].audioencode.bitrate;
+					stmdata.year = 2014;
+					stmdata.month = 1;
+					stmdata.day = 1;
+					stmdata.hour = 1;
+					stmdata.minute = 1;
+					stmdata.second = 1;
+
+					chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM, &stmdata, &chn->audiouserdata);
+				}
+			}
+
 			return;
 		}
 		else
@@ -1203,6 +1234,7 @@ static void hk_show_dev_ability(struct device *dev)
 {
 	jtprintf("[%s]\n", __FUNCTION__);
 	struct hkdevice *hkdev = (hkdevice *)dev;   
+
 	jtprintf("[%s]byChanNum %d, byIPChanNum %d, byStartChan %d, byStartDChan %d, byMainProto %d, bySubProto %d, byAudioChanNum %d\n", __FUNCTION__
 		, hkdev->info.byChanNum,  hkdev->info.byIPChanNum
 		, hkdev->info.byStartChan, hkdev->info.byStartDChan, hkdev->info.byMainProto, hkdev->info.bySubProto, hkdev->info.byAudioChanNum);

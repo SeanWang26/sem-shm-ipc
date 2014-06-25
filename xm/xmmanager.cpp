@@ -281,7 +281,8 @@ static int xm_real_data_callback_v2(long lRealHandle, const PACKET_INFO_EX *pFra
 			stmdata.minute = pFrame->nMinute;
 			stmdata.second = pFrame->nSecond;
 
-			chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM, &stmdata, &chn->audiouserdata);
+			if(chn->audiocallback)
+				chn->audiocallback(CALLBACK_TYPE_AUDIO_STREAM, &stmdata, &chn->audiouserdata);
 		}
 
 		return 1;
@@ -979,7 +980,7 @@ static int xm_close_video_stream(struct device *dev, struct stCloseVideoStream_R
 	else
 	{
 		if(stm->stm.callback)
-			stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM_CLOSEED, (void*)OPEN_AUDIO_STREAM_FAILED, &stm->stm.userdata);
+			stm->stm.callback(CALLBACK_TYPE_VIDEO_STREAM_CLOSEED, (void*)CLOSE_VIDEO_STREAM_FAILED, &stm->stm.userdata);
 	
 		jtprintf("[%s]H264_DVR_StopRealPlay error\n", __FUNCTION__);
 		return CLOSE_VIDEO_STREAM_FAILED;

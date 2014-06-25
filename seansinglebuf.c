@@ -98,7 +98,6 @@ unsigned int write_to_singlebuf(struct stsinglebufinfo *bufinfo, unsigned char* 
 	return datalen;
 }
 
-//返回读出的长度
 unsigned int read_from_singlebuf(struct stsinglebufinfo *bufinfo, unsigned char** data, unsigned int *datalen)
 {
 	*data = bufinfo->buf;
