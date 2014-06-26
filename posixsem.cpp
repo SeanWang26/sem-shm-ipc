@@ -216,12 +216,12 @@ static int FindClose(HANDLE handle)
 					if(res == ETIMEDOUT)
 					{
 						jtprintf("[%s]SEM_WAIT timeout, %s\n", __FUNCTION__, strerror(errno));
-						call.SemReq.Value = -1;
+						DCALL.SemReq.Value = -1;
 					}
 					else
 					{
 						jtprintf("[%s]SEM_WAIT error, %s\n", __FUNCTION__, strerror(errno));
-						call.SemReq.Value = -2;
+						DCALL.SemReq.Value = -2;
 					}
 					
 					return FALSE;
