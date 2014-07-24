@@ -27,8 +27,8 @@
 		{																	\
 			dl##type = dlopen("./libjt"#type".so", RTLD_NOW | RTLD_GLOBAL); \
 			if(dl##type==NULL) 											\
-			{																	\
-				jtprintf("open lib ""./libjt"#type".so failed\n");    \
+			{															\
+				jtprintf("open lib ""./libjt"#type".so failed, %s\n", strerror(errno));    \
 				return NULL;	                                         \
 			}                                                             \
 			int (*type##_lib_init)() = NULL; 	dlerror();											\
@@ -174,6 +174,11 @@ struct device *alloc_device(unsigned int type)
 	{
 		ALLOC_SPEC_DEVICE(sn);
 	}
+	else if(type==DEVICE_JN)
+	{
+		ALLOC_SPEC_DEVICE(jn);
+	}
+
 
 #endif
 

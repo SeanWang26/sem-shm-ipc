@@ -33,13 +33,14 @@
 #define OBJECT_TYPE_STREAM	5
 
 //设备类型定义
-#define DEVICE_JT              1U	//
+#define DEVICE_JN              1U	//竣泰
 #define DEVICE_DH              2U	//大华
 #define DEVICE_HK              3U	//海康
 #define DEVICE_SN              4U	//索尼
 #define DEVICE_XM              5U	//雄迈
 #define DEVICE_HH              6U	//黄河
 #define DEVICE_JY              7U	//景阳
+#define DEVICE_XX              99U	//
 
 #define VIDEO_STREAM_DATA           0x0000000000000001
 #define AUDIO_STREAM_DATA           0x0000000000000002
@@ -82,12 +83,12 @@
 #define AUDIO_ENCODE_UNKOWN                              9999
 
 
-#define ALARM_TYPE_VIDEO_MOTION                          1000 //移动侦测
-#define ALARM_TYPE_VIDEO_LOSS                            1001 //视频丢失
-#define ALARM_TYPE_VIDEO_BLIND                           1002 //遮挡
-#define ALARM_TYPE_INPUT                                 1003 //输入
-#define ALARM_TYPE_STORAGE_NOT_EXIST                     1004 //储存不存在
-#define ALARM_TYPE_UNKNOWN                               9999 //未知
+#define JT_ALARM_TYPE_VIDEO_MOTION                          1000 //移动侦测
+#define JT_ALARM_TYPE_VIDEO_LOSS                            1001 //视频丢失
+#define JT_ALARM_TYPE_VIDEO_BLIND                           1002 //遮挡
+#define JT_ALARM_TYPE_INPUT                                 1003 //输入
+#define JT_ALARM_TYPE_STORAGE_NOT_EXIST                     1004 //储存不存在
+#define JT_ALARM_TYPE_UNKNOWN                               9999 //未知
 
 #define JPTZ_MAX_SEQUENCE_NUM                             16   //云台巡航可设置的最大预置点数
 
@@ -113,6 +114,35 @@ struct encode_info
 	int bitrate;
 	int bitratectl;//可变???
 	int gop;
+};
+
+struct jt_equ_info
+{
+	int equid;
+	char equname[64];
+	char factoryname[64];
+	char ip[64];
+	unsigned int port;
+	char username[65];
+	char password[129];
+	int channelnum;
+	int inputnum;
+	int	outputnum;
+};
+
+struct jt_subequ_info
+{
+	int subequid;
+	int equid;
+	int ctlgid;
+	char subname[64];
+	int subseq;
+	int subtype;
+	int specifictype;
+	int hasptz;
+	int haslamp;
+	int hasdemist;
+	int hasrainbrush;
 };
 
 struct st_stream_data

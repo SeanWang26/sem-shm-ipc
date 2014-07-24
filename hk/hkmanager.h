@@ -1,5 +1,5 @@
-#ifndef XMMANAGER_H
-#define XMMANAGER_H
+#ifndef HKMANAGER_H
+#define HKMANAGER_H
 
 #include "../frontdevice.h"
 
@@ -50,7 +50,6 @@ extern "C" struct hkdevice *hk_alloc_device(void);
 
 #define HK_INVALIDE_HANDLE     -1
 #define HK_INVALIDE_LOGINID    -1
-#define HK_INVALIDE_PLAYHANDLE -1
 #define HK_INVALIDE_PLAYHANDLE -1
 
 #endif

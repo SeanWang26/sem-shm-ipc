@@ -251,26 +251,26 @@ void dh_talk_data_callback(LONG lTalkHandle, char *pDataBuf, long dwBufSize, cha
 
 static inline int dh_handle_alarm(dhdevice *device, LONG lCommand, char *pBuf, unsigned long dwBufLen)
 {
-	int reason = ALARM_TYPE_UNKNOWN;
+	int reason = JT_ALARM_TYPE_UNKNOWN;
 
 	if(lCommand==DH_ALARM_ALARM_EX)//±¨¾¯ÊäÈë±¨¾¯
 	{
-		reason = ALARM_TYPE_INPUT;
+		reason = JT_ALARM_TYPE_INPUT;
 	}
 	else if (lCommand==DH_MOTION_ALARM_EX) //ÒÆ¶¯Õì²â±¨¾¯
 	{
-		reason = ALARM_TYPE_VIDEO_MOTION;
+		reason = JT_ALARM_TYPE_VIDEO_MOTION;
 	}
 	else if(lCommand==DH_VIDEOLOST_ALARM_EX)//ÊÓÆµ¶ªÊ§±¨¾¯
 	{
-		reason = ALARM_TYPE_VIDEO_LOSS;
+		reason = JT_ALARM_TYPE_VIDEO_LOSS;
 	}
 	else if(lCommand==DH_SHELTER_ALARM_EX)//ÕÚµ²±¨¾¯
 	{
-		reason = ALARM_TYPE_VIDEO_BLIND;
+		reason = JT_ALARM_TYPE_VIDEO_BLIND;
 	}
 	
-	if(reason==ALARM_TYPE_UNKNOWN)
+	if(reason==JT_ALARM_TYPE_UNKNOWN)
 	{
 		jtprintf("[%s]reason==ALARM_TYPE_UNKNOWN\n", __FUNCTION__);
 		return 0;
@@ -641,7 +641,7 @@ static int dh_fill_encode_info(struct device* dev, DHDEV_CHANNEL_CFG *EncodeConf
 			= dh_get_encode_mode(EncodeConfig[i].stMainVideoEncOpt[0].byEncodeMode);
 		dev->encodeinfo.ch_encode_info[i].mainencode.fps = dh_fps_convert((struct dhdevice* )dev, EncodeConfig[i].stMainVideoEncOpt[0].byFramesPerSec);
 
-		dh_resolution_convert(EncodeConfig[i].stMainVideoEncOpt[0].byImageSize
+		dh_resolution_convert((struct dhdevice *)dev, EncodeConfig[i].stMainVideoEncOpt[0].byImageSize
 							, &dev->encodeinfo.ch_encode_info[i].mainencode.width
 							, &dev->encodeinfo.ch_encode_info[i].mainencode.height);
 
@@ -656,7 +656,7 @@ static int dh_fill_encode_info(struct device* dev, DHDEV_CHANNEL_CFG *EncodeConf
 			= dh_get_encode_mode(EncodeConfig[i].stMainVideoEncOpt[0].byEncodeMode);
 		dev->encodeinfo.ch_encode_info[i].sub1encode.fps = dh_fps_convert((struct dhdevice *)dev, EncodeConfig[i].stMainVideoEncOpt[0].byFramesPerSec);
 
-		dh_resolution_convert(EncodeConfig[i].stMainVideoEncOpt[0].byImageSize
+		dh_resolution_convert((struct dhdevice *)dev, EncodeConfig[i].stMainVideoEncOpt[0].byImageSize
 							, &dev->encodeinfo.ch_encode_info[i].sub1encode.width
 							, &dev->encodeinfo.ch_encode_info[i].sub1encode.height);
 

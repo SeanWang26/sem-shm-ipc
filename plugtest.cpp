@@ -106,12 +106,11 @@ void* handle= NULL;
 //int devtype = DEVICE_DH;
 //int devtype = DEVICE_XM;
 
-int gdevtype = DEVICE_SN;
-char gip[64] = {"192.168.0.100"};
-unsigned int gport = 8000;
+int gdevtype = DEVICE_JN;
+char gip[64] = {"192.168.3.116"};
+unsigned int gport = 20000;
 char guser[64] = {"admin"};
 char gpassword[64] = {"admin"};
-
 
 void* func(void *)
 {
@@ -151,16 +150,31 @@ void* func(void *)
 
 	struct stGetConfig_Req reqc;
 	struct stGetConfig_Rsp rspc;
-	reqc.Channel = 0;
+	reqc.Channel = 2;
 	reqc.Codec = 0;
 	reqc.Type = GET_ENCODE_CONFIG;
-
 	jt_get_config(handle, &reqc, &rspc);
+	
+	reqc.Channel = -1;
+	reqc.Codec = 0;
+	reqc.Type = GET_EQU_INFO;
+	jt_get_config(handle, &reqc, &rspc);
+
+	reqc.Channel = -1;
+	reqc.Codec = 0;
+	reqc.Type = GET_SUB_EQU_INFO;
+	jt_get_config(handle, &reqc, &rspc);
+	struct jt_subequ_info *subequ_info = (struct jt_subequ_info *)rspc.Config;
+	if(rspc.Size)
+	{
+		//subequ_info[0].subseq;
+	}
+
 
 	while(1)
 	{
 		struct stOpenVideoStream_Req req2;
-		req2.Channel = 0;
+		req2.Channel = 6;
 		req2.Codec = 0;
 		req2.Callback = stream_callback;
 		req2.UserData = new int(1);
@@ -241,7 +255,7 @@ void* func(void *)
 
 		jt_ptz_control(handle, &req7, &rsp6);
 #endif
-		while(1)
+		//while(1)
 			sleep(5);
 
 		//¹Ø±ÕÊÓÆµÁ÷
@@ -293,6 +307,7 @@ int main(int argc, char** argv)
 		else if(string(ctype)=="xm") gdevtype = DEVICE_XM;
 		else if(string(ctype)=="hk") gdevtype = DEVICE_HK;
 		else if(string(ctype)=="dh") gdevtype = DEVICE_DH;
+		else if(string(ctype)=="jn") gdevtype = DEVICE_JN;
 
 		strcpy(gip, cip);
 		gport = (unsigned int)atoi(cport);

@@ -23,6 +23,9 @@
 
 //获取配置的子命令
 #define GET_ENCODE_CONFIG               1//获取编码配置
+#define GET_EQU_INFO                    2//获取主设备信息
+#define GET_SUB_EQU_INFO                3//获取主设备信息
+
 
 //#pragma pack(4)
 struct stHead

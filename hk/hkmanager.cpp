@@ -660,19 +660,19 @@ static int hk_alarm_type_convert(unsigned int type)
 	switch(type)
 	{	
 		case 0:
-			return ALARM_TYPE_INPUT;
+			return JT_ALARM_TYPE_INPUT;
 		case 2:
-			return ALARM_TYPE_VIDEO_LOSS;
+			return JT_ALARM_TYPE_VIDEO_LOSS;
 		case 3:
-			return ALARM_TYPE_VIDEO_MOTION;
+			return JT_ALARM_TYPE_VIDEO_MOTION;
 		case 6:
-			return ALARM_TYPE_VIDEO_BLIND;
+			return JT_ALARM_TYPE_VIDEO_BLIND;
 		default:
 			break ;
 	}
 
 	jtprintf("[%s]ALARM_TYPE_UNKNOWN\n", __FUNCTION__);
-	return ALARM_TYPE_UNKNOWN;
+	return JT_ALARM_TYPE_UNKNOWN;
 }
 
 static void CALLBACK hk_alarm_callback(LONG lCommand, NET_DVR_ALARMER *pAlarmer, char *pAlarmInfo, DWORD dwBufLen, void* pUser)
@@ -691,7 +691,7 @@ static void CALLBACK hk_alarm_callback(LONG lCommand, NET_DVR_ALARMER *pAlarmer,
 			st_stream_data alarm;
 			alarm.streamtype = ALARM_STREAM_DATA;
 			alarm.stream_info.alarm_stream_info.reason = hk_alarm_type_convert(struAlarmInfo.dwAlarmType);
-			if(alarm.stream_info.alarm_stream_info.reason != ALARM_TYPE_UNKNOWN)
+			if(alarm.stream_info.alarm_stream_info.reason != JT_ALARM_TYPE_UNKNOWN)
 			{
 				for (int i=0; i<MAX_CHANNUM; i++)	//#define MAX_CHANNUM	16	//最大通道数
 				{
@@ -718,7 +718,7 @@ static void CALLBACK hk_alarm_callback(LONG lCommand, NET_DVR_ALARMER *pAlarmer,
 			st_stream_data alarm;
 			alarm.streamtype = ALARM_STREAM_DATA;
 			alarm.stream_info.alarm_stream_info.reason = hk_alarm_type_convert(struAlarmInfo.dwAlarmType);
-			if(alarm.stream_info.alarm_stream_info.reason != ALARM_TYPE_UNKNOWN)
+			if(alarm.stream_info.alarm_stream_info.reason != JT_ALARM_TYPE_UNKNOWN)
 			{
 				for (int i=0; i<MAX_CHANNUM; i++)	//#define MAX_CHANNUM	16	//最大通道数
 				{

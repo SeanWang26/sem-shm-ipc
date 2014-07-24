@@ -640,17 +640,17 @@ static int sn_alarm_type_convert(unsigned int type)
 	switch(type)
 	{
 		case 2:
-			return ALARM_TYPE_VIDEO_LOSS;
+			return JT_ALARM_TYPE_VIDEO_LOSS;
 		case 3:
-			return ALARM_TYPE_VIDEO_MOTION;
+			return JT_ALARM_TYPE_VIDEO_MOTION;
 		case 6:
-			return ALARM_TYPE_VIDEO_BLIND;
+			return JT_ALARM_TYPE_VIDEO_BLIND;
 		default:
 			break ;
 	}
 
 	jtprintf("[%s]ALARM_TYPE_UNKNOWN\n", __FUNCTION__);
-	return ALARM_TYPE_UNKNOWN;
+	return JT_ALARM_TYPE_UNKNOWN;
 }
 
 /*static void CALLBACK sn_alarm_callback(long lCommand, NET_DVR_ALARMER *pAlarmer, char *pAlarmInfo, unsigned int dwBufLen, void* pUser)
@@ -1300,7 +1300,7 @@ static int sn_ipc_cgi_inquiry(void* callback, void* userdata, char* url, char* u
 		goto curl_error;
 	}
 
-	code = curl_easy_setopt(conn, CURLOPT_CLOSESOCKETFUNCTION, sn_ipc_cgi_inquiry_closesocket);
+/*	code = curl_easy_setopt(conn, CURLOPT_CLOSESOCKETFUNCTION, sn_ipc_cgi_inquiry_closesocket);
 	if (code != CURLE_OK) {
 		jtprintf("[%s]Failed to set CURLOPT_CLOSESOCKETFUNCTION 0\n", __FUNCTION__);
 		goto curl_error;
@@ -1311,7 +1311,7 @@ static int sn_ipc_cgi_inquiry(void* callback, void* userdata, char* url, char* u
 		jtprintf("[%s]Failed to set CURLOPT_CLOSESOCKETDATA 0\n", __FUNCTION__);
 		goto curl_error;
 	}
-
+*/
 
 	code = curl_easy_setopt(conn, CURLOPT_FORBID_REUSE, 1);
 	if (code != CURLE_OK) {
